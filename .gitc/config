@@ -1,0 +1,5 @@
+---
+project_name: health-check
+open onto: test
+use_version_tags: 1
+autorelease_to_gsgpan: 1

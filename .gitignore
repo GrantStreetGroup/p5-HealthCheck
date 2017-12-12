@@ -18,3 +18,4 @@ cpanfile.snapshot
 local/
 GSG-*-v*/
 GSG-*-v*.tar.*
+.perl-version

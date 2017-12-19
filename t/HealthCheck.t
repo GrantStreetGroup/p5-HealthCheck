@@ -246,6 +246,79 @@ subtest "Should run checks" => sub {
         "Specifying a tag that doesn't match means no checks are run";
 };
 
+subtest "Check with tags" => sub {
+    my $c = HealthCheck->new(
+        id     => 'main',
+        tags   => ['default'],
+        checks => [
+            sub { +{ status => 'OK' } },
+            {
+                check => sub { +{ id => 'fast-cheap', status => 'OK' } },
+                tags => [qw( fast cheap )],
+            },
+            {
+                check => sub { +{ id => 'fast-easy', status => 'OK' } },
+                tags => [qw( fast easy )],
+            },
+            HealthCheck->new(
+                id     => 'subcheck',
+                tags   => [qw( subcheck easy )],
+                checks => [
+                    sub { +{ id => 'subcheck-default', status => 'OK' } },
+                    {
+                        check => sub { +{ status => 'CRITICAL' } },
+                        tags  => ['hard'],
+                    },
+                ]
+            ),
+        ] );
+
+    is_deeply $c->check, {
+        'id'      => 'main',
+        'tags'    => ['default'],
+        'results' => [
+            { 'status' => 'OK' },
+            { 'id'     => 'fast-cheap', 'status' => 'OK' },
+            { 'id'     => 'fast-easy', 'status' => 'OK' },
+            {
+                'id'      => 'subcheck',
+                'results' => [
+                    { 'id'     => 'subcheck-default', 'status' => 'OK' },
+                    { 'status' => 'CRITICAL' }
+                ],
+                'tags' => [ 'subcheck', 'easy' ] }
+        ],
+    }, "Default check runs all checks";
+
+    is_deeply $c->check( tags => ['default'] ), {
+        'id'      => 'main',
+        'tags' => ['default'],
+        'status' => 'OK',
+    }, "Check with 'default' tags runs only untagged check";
+
+    is_deeply $c->check( tags => ['easy'] ), {
+        'id'      => 'main',
+        'tags'    => ['default'],
+        'results' => [
+            { 'id' => 'fast-easy', 'status' => 'OK' },
+            {
+                'id'     => 'subcheck-default',
+                'tags'   => [ 'subcheck', 'easy' ],
+                'status' => 'OK',
+            }
+        ],
+    }, "Check with 'easy' tags runs checks tagged easy";
+
+    # Because the "subcheck" doesn't have a "hard" tag
+    # it doesn't get run, so none of its checks get run
+    # so there are no results.
+    is_deeply $c->check( tags => ['hard'] ), {
+        'id'      => 'main',
+        'tags'    => ['default'],
+        'results' => [],
+    }, "Check with 'hard' tags runs no checks, so no results";
+};
+
 done_testing;
 
 sub check       { +{ status => 'OK', label => 'Local' } }

@@ -195,6 +195,38 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
             "With an invocant, called as a method"
         );
     }
+    {
+        my @args;
+        my %check = (
+            check => sub { @args = @_; status => 'OK' },
+            label => "CodeRef Label",
+        );
+        HealthCheck->new->register( \%check )->check( custom => 'params' );
+
+        delete @check{qw( invocant check )};
+
+        is_deeply(
+            \@args,
+            [ %check, custom => 'params' ],
+            "Params passed to check merge with check definition"
+        );
+    }
+    {
+        my @args;
+        my %check = (
+            check => sub { @args = @_; status => 'OK' },
+            label => "CodeRef Label",
+        );
+        HealthCheck->new->register( \%check )->check( label => 'Check' );
+
+        delete @check{qw( invocant check )};
+
+        is_deeply(
+            \@args,
+            [ %check, label => 'Check' ],
+            "Params passed to check override check definition"
+        );
+    }
 }
 
 { note "Set and retrieve tags";

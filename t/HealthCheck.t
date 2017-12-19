@@ -197,6 +197,16 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
     }
 }
 
+{ note "Set and retrieve tags";
+    is_deeply [HealthCheck->new->tags], [],
+        "No tags set, no tags returned";
+
+    is_deeply [ HealthCheck->new( tags => [qw(foo bar)] )->tags ],
+        [qw( foo bar )],
+        "Returns the tags passed in.";
+
+}
+
 done_testing;
 
 sub check       { +{ status => 'OK', label => 'Local' } }

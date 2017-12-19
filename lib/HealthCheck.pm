@@ -22,6 +22,7 @@ HealthCheck - Health Check Runner
     my $checker = HealthCheck->new(
         id     => 'main_checker',
         label  => 'Main Health Check',
+        tags   => [qw( fast cheap )],
         checks => [
             sub { return { id => 'coderef', status => 'OK' } },
             'my_check',          # Name of a method on caller
@@ -31,6 +32,7 @@ HealthCheck - Health Check Runner
     my $other_checker = HealthCheck->new(
         id     => 'my_health_check',
         label  => "My Health Check",
+        tags   => [qw( cheap easy )],
         other  => "Other details to include",
     )->register(
         'My::Checker',       # Name of a loaded class that ->can("check")
@@ -47,8 +49,11 @@ HealthCheck - Health Check Runner
     $checker->register( {
         invocant    => 'My::Checker',      # to call the "check" on
         check       => 'another_check',    # name of the check method
+        tags        => [qw( fast easy )],
         more_params => 'anything',
     } );
+
+    my @tags = $checker->tags;    # returns fast, cheap
 
     my %result = %{ $checker->check };
 
@@ -83,12 +88,14 @@ C<%result> will be
 
     'id'      => 'main_checker',
     'label'   => 'Main Health Check',
+    'tags'    => [qw( fast cheap )],
     'results' => [
         { 'id' => 'coderef',  'status' => 'OK' },
         { 'id' => 'my_check', 'status' => 'WARNING' },
         {
             'id'      => 'my_health_check',
             'label'   => 'My Health Check',
+            'tags'    => [qw( cheap easy )],
             'other'   => 'Other details to include',
             'results' => [
                 { 'id' => 'class_method',  'status' => 'WARNING' },
@@ -125,6 +132,11 @@ L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+C
 
 An arrayref that is passed to L</register> to initialize checks.
 
+=item tags
+
+An arrayref used as the default set of tags for any checks that don't
+override them.
+
 =back
 
 Any other parameters are included in the "Result" hashref returned.
@@ -151,6 +163,14 @@ sub new {
     my $self = bless {%params}, $class;
     return $checks ? $self->register($checks) : $self;
 }
+
+=head2 tags
+
+Read only accessor that returns the list of tags registered with this object.
+
+=cut
+
+sub tags { @{ shift->{tags} || [] } }
 
 =head2 register
 

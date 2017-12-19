@@ -109,6 +109,70 @@ C<%result> will be
         },
     ],
 
+Specifying C<tags> runs only tuhe subset of checks that match the tags.
+
+    $checker->check( tags => ['fast'] );
+    # returns
+    # {
+    #     'id'      => 'main_checker',
+    #     'label'   => 'Main Health Check',
+    #     'tags'    => [ 'fast', 'cheap' ],
+    #     'results' => [
+    #         { 'id' => 'coderef',  'status' => 'OK' },
+    #         { 'id' => 'my_check', 'status' => 'WARNING' },
+    #         {
+    #             'id'     => 'another_check',
+    #             'label'  => 'A Super custom check',
+    #             'status' => 'CRITICAL',
+    #         }
+    #     ],
+    # }
+
+    $checker->check( tags => ['cheap'] );
+    # returns
+    # {
+    #     'id'      => 'main_checker',
+    #     'label'   => 'Main Health Check',
+    #     'tags'    => [ 'fast', 'cheap' ],
+    #     'results' => [
+    #         { 'id' => 'coderef',  'status' => 'OK' },
+    #         { 'id' => 'my_check', 'status' => 'WARNING' },
+    #         {
+    #             'id'      => 'my_health_check',
+    #             'label'   => 'My Health Check',
+    #             'tags'    => [ 'cheap', 'easy' ],
+    #             'other'   => 'Other details to include',
+    #             'results' => [
+    #                 { 'id' => 'class_method',  'status' => 'WARNING' },
+    #                 { 'id' => 'object_method', 'status' => 'WARNING' },
+    #             ],
+    #         },
+    #     ],
+    # }
+
+    $checker->check( tags => ['easy'] );
+    # returns
+    # {
+    #     'id'      => 'main_checker',
+    #     'label'   => 'Main Health Check',
+    #     'tags'    => [ 'fast', 'cheap' ],
+    #     'results' => [ {
+    #             'id'      => 'my_health_check',
+    #             'label'   => 'My Health Check',
+    #             'tags'    => [ 'cheap', 'easy' ],
+    #             'other'   => 'Other details to include',
+    #             'results' => [
+    #                 { 'id' => 'class_method',  'status' => 'WARNING' },
+    #                 { 'id' => 'object_method', 'status' => 'WARNING' }
+    #             ],
+    #         },
+    #         {
+    #             'id'     => 'another_check',
+    #             'label'  => 'A Super custom check',
+    #             'status' => 'CRITICAL'
+    #         }
+    #     ],
+    # }
 
 =head1 DESCRIPTION
 
@@ -334,6 +398,8 @@ sub check {
             carp("Invalid return from $c (@r)");
             ();
         };
+    } grep {
+        $self->should_run( $_, %params );
     } @checks;
 
     # Merge the results if there is only a single check.

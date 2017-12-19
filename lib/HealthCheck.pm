@@ -295,12 +295,14 @@ sub register {
 
 =head2 check
 
-    my %results = %{ $checker->check }
+    my %results = %{ $checker->check(%params) }
 
 Calls all of the registered checks and returns a hashref of the results of
 processing the checks.
 Passes the L</full hashref of params> as an even-sized list to the check,
 without the C<invocant> or C<check> keys.
+This hashref is shallow merged with and duplicate keys overridden by
+the C<%params> passed in.
 
 If only a single check is registered,
 the results from that check are merged with, and will override
@@ -312,7 +314,7 @@ Throws an exception if no checks have been registered.
 =cut
 
 sub check {
-    my ($self) = @_;
+    my ($self, %params) = @_;
     croak("check cannot be called as a class method") unless ref $self;
     croak("No registered checks") unless @{ $self->{checks} || [] };
 
@@ -323,7 +325,7 @@ sub check {
         my %c = %{$_};
         my $i = delete $c{invocant} || '';
         my $m = delete $c{check}    || '';
-        my @r = $i ? $i->$m( %c ) : $m->( %c );
+        my @r = $i ? $i->$m( %c, %params ) : $m->( %c, %params );
 
           @r == 1 && ref $r[0] eq 'HASH' ? $r[0]
         : @r % 2 == 0 ? {@r}

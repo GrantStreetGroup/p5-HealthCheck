@@ -343,6 +343,55 @@ sub check {
     return \%ret;
 }
 
+=head2 should_run
+
+    my $bool = $checker->should_run( \%check, tags => ['banana'] );
+
+Takes a check definition hash and paramters and returns true
+if the check should be run.
+Used by L</check> to determine which checks to run.
+
+Supported parameters:
+
+=over
+
+=item tags
+
+If the tags for the check match any of the tags passed in, the check is run.
+If no tags are passed in, all checks will be run.
+
+If the C<invocant> C<can('tags')> and there are no tags in the
+L</full hashref of params> then the return value of that method is used.
+
+If a check has no tags defined, will use the default tags defined
+when the object was created.
+
+=back
+
+=cut
+
+sub should_run {
+    my ( $self, $check, %params ) = @_;
+
+    if ( my @want_tags = @{ $params{tags} || [] } ) {
+        my %have_tags = do {
+            my @t = @{ $check->{tags} || [] };
+
+            @t = $check->{invocant}->tags
+                if not @t
+                and $check->{invocant}
+                and $check->{invocant}->can('tags');
+
+            @t = $self->tags unless @t;
+            map { $_ => 1 } @t;
+        };
+
+        return unless grep { $have_tags{$_} } @want_tags;
+    }
+
+    return 1;
+}
+
 1;
 
 =head1 DEPENDENCIES

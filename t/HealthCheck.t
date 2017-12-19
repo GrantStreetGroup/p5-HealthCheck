@@ -166,6 +166,16 @@ subtest "Calling Conventions" => sub {
     }
 };
 
+subtest "Set and retrieve tags" => sub {
+    is_deeply [HealthCheck->new->tags], [],
+        "No tags set, no tags returned";
+
+    is_deeply [ HealthCheck->new( tags => [qw(foo bar)] )->tags ],
+        [qw( foo bar )],
+        "Returns the tags passed in.";
+
+};
+
 done_testing;
 
 sub check       { +{ status => 'OK', label => 'Local' } }

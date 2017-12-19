@@ -239,6 +239,44 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
 
 }
 
+{ note "Should run checks";
+    my %checks = (
+        'Default'        => {},
+        'Fast and Cheap' => { tags => [qw(  fast cheap )] },
+        'Fast and Easy'  => { tags => [qw(  fast  easy )] },
+        'Cheap and Easy' => { tags => [qw( cheap  easy )] },
+        'Hard'           => { tags => [qw( hard )] },
+        'Invocant Can'   => HealthCheck->new( tags => ['invocant'] ),
+    );
+    my $c = HealthCheck->new( tags => ['default'] );
+
+    my $run = sub {
+        [ grep { $c->should_run( $checks{$_}, tags => \@_ ) }
+                sort keys %checks ];
+    };
+
+    is_deeply $run->(), [
+        'Cheap and Easy',
+        'Default',
+        'Fast and Cheap',
+        'Fast and Easy',
+        'Hard',
+        'Invocant Can',
+    ], "Without specifying any desired tags, should run all checks";
+
+    is_deeply $run->('fast'), [ 'Fast and Cheap', 'Fast and Easy', ],
+        "Fast tag runs fast checks";
+
+    is_deeply $run->(qw( hard default )), ['Default', 'Hard'],
+        "Specifying hard and default tags runs checks that match either";
+
+    is_deeply $run->(qw( invocant )), ['Invocant Can'],
+        "Pick up tags if invocant can('tags')";
+
+    is_deeply $run->(qw( nonexistent )), [],
+        "Specifying a tag that doesn't match means no checks are run";
+}
+
 done_testing;
 
 sub check       { +{ status => 'OK', label => 'Local' } }

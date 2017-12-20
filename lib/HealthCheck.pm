@@ -162,6 +162,8 @@ sub new {
 
 Takes a list of check definitions to be added to the object.
 
+Each registered check must return a valid GSG Health Check response,
+either as a hashref or an even-sized list.
 See the GSG Health Check Standard (linked in L</DESCRIPTION>)
 for the fields that checks should return.
 
@@ -299,9 +301,17 @@ sub check {
 
     my @res = map {
         my %c = %{$_};
-        my $i = delete $c{invocant};
-        my $m = delete $c{check};
-        $i ? $i->$m( %c ) : $m->( %c )
+        my $i = delete $c{invocant} || '';
+        my $m = delete $c{check}    || '';
+        my @r = $i ? $i->$m( %c ) : $m->( %c );
+
+          @r == 1 && ref $r[0] eq 'HASH' ? $r[0]
+        : @r % 2 == 0 ? {@r}
+        : do {
+            my $c = $i ? "$i->$m" : "$m";
+            carp("Invalid return from $c (@r)");
+            ();
+        };
     } @checks;
 
     # Merge the results if there is only a single check.

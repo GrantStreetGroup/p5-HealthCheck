@@ -131,6 +131,35 @@ subtest "Don't find method where caller doesn't have it" => sub {
     }
 };
 
+subtest "Results as even-sized-list or hashref" => sub {
+    my @warnings;
+    local $SIG{__WARN__} = sub { push @warnings, @_ };
+
+    is_deeply(
+        HealthCheck->new( checks => [
+            sub { +{ id => 'hashref', status => 'OK' } },
+            { invocant => 'My::Check', check => sub { 'broken' } },
+            sub { id => 'even_size_list', status => 'OK' },
+            sub { [ { status => 'broken' } ] },
+        ] )->check,
+        {
+            'results' => [
+                { 'id' => 'hashref',        'status' => 'OK' },
+                { 'id' => 'even_size_list', 'status' => 'OK' }
+            ],
+        },
+        "Results as expected"
+    );
+    my $at = "at " . __FILE__ . " line " . ( __LINE__ - 9 );
+
+    s/0x[[:xdigit:]]+/0xHEX/g for @warnings;
+
+    is_deeply \@warnings, [
+         "Invalid return from My::Check->CODE(0xHEX) (broken) $at.\n",
+         "Invalid return from CODE(0xHEX) (ARRAY(0xHEX)) $at.\n",
+    ], "Expected warnings";
+};
+
 subtest "Calling Conventions" => sub {
     {
         my @args;

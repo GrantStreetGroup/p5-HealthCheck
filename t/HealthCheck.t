@@ -133,6 +133,35 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
     }
 }
 
+{ note "Results as even-sized-list or hashref";
+    my @warnings;
+    local $SIG{__WARN__} = sub { push @warnings, @_ };
+
+    is_deeply(
+        HealthCheck->new( checks => [
+            sub { +{ id => 'hashref', status => 'OK' } },
+            { invocant => 'My::Check', check => sub { 'broken' } },
+            sub { id => 'even_size_list', status => 'OK' },
+            sub { [ { status => 'broken' } ] },
+        ] )->check,
+        {
+            'results' => [
+                { 'id' => 'hashref',        'status' => 'OK' },
+                { 'id' => 'even_size_list', 'status' => 'OK' }
+            ],
+        },
+        "Results as expected"
+    );
+    my $at = "at " . __FILE__ . " line " . ( __LINE__ - 9 );
+
+    s/0x[[:xdigit:]]+/0xHEX/g for @warnings;
+
+    is_deeply \@warnings, [
+         "Invalid return from My::Check->CODE(0xHEX) (broken) $at$nl",
+         "Invalid return from CODE(0xHEX) (ARRAY(0xHEX)) $at$nl",
+    ], "Expected warnings";
+}
+
 { note "Calling Conventions";
     {
         my @args;

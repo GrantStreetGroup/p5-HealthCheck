@@ -88,6 +88,7 @@ C<%result> will be
 
     'id'      => 'main_checker',
     'label'   => 'Main Health Check',
+    'status'  => 'CRITICAL',
     'tags'    => [qw( fast cheap )],
     'results' => [
         { 'id' => 'coderef',  'status' => 'OK' },
@@ -95,6 +96,7 @@ C<%result> will be
         {
             'id'      => 'my_health_check',
             'label'   => 'My Health Check',
+            'status'  => 'WARNING',
             'tags'    => [qw( cheap easy )],
             'other'   => 'Other details to include',
             'results' => [
@@ -116,6 +118,7 @@ Specifying C<tags> runs only tuhe subset of checks that match the tags.
     # {
     #     'id'      => 'main_checker',
     #     'label'   => 'Main Health Check',
+    #     'status'  => 'CRITICAL',
     #     'tags'    => [ 'fast', 'cheap' ],
     #     'results' => [
     #         { 'id' => 'coderef',  'status' => 'OK' },
@@ -133,6 +136,7 @@ Specifying C<tags> runs only tuhe subset of checks that match the tags.
     # {
     #     'id'      => 'main_checker',
     #     'label'   => 'Main Health Check',
+    #     'status'  => 'WARNING',
     #     'tags'    => [ 'fast', 'cheap' ],
     #     'results' => [
     #         { 'id' => 'coderef',  'status' => 'OK' },
@@ -140,6 +144,7 @@ Specifying C<tags> runs only tuhe subset of checks that match the tags.
     #         {
     #             'id'      => 'my_health_check',
     #             'label'   => 'My Health Check',
+    #             'status'  => 'WARNING',
     #             'tags'    => [ 'cheap', 'easy' ],
     #             'other'   => 'Other details to include',
     #             'results' => [
@@ -155,10 +160,12 @@ Specifying C<tags> runs only tuhe subset of checks that match the tags.
     # {
     #     'id'      => 'main_checker',
     #     'label'   => 'Main Health Check',
+    #     'status'  => 'CRITICAL',
     #     'tags'    => [ 'fast', 'cheap' ],
     #     'results' => [ {
     #             'id'      => 'my_health_check',
     #             'label'   => 'My Health Check',
+    #             'status'  => 'WARNING',
     #             'tags'    => [ 'cheap', 'easy' ],
     #             'other'   => 'Other details to include',
     #             'results' => [
@@ -402,11 +409,7 @@ sub check {
         $self->should_run( $_, %params );
     } @checks;
 
-    # Merge the results if there is only a single check.
-    if ( @res == 1 ) { %ret = ( %ret, %{ $res[0] } ) }
-    else             { $ret{results} = \@res }
-
-    return \%ret;
+    return $self->summarize( { %ret, results => \@res } );
 }
 
 =head2 should_run
@@ -456,6 +459,74 @@ sub should_run {
     }
 
     return 1;
+}
+
+=head2 summarize
+
+    %result = %{ $checker->summarize( \%result ) };
+
+Summarizes and validates the result.
+Used by L</check>.
+
+Modifies the passed in hashref in-place.
+
+=cut
+
+sub summarize {
+    my ($self, $result, $id) = @_;
+
+    # Indexes correspond to Nagios Plugin Return Codes
+    # https://assets.nagios.com/downloads/nagioscore/docs/nagioscore/3/en/pluginapi.html
+    my @forward = qw( OK WARNING CRITICAL UNKNOWN );
+
+    # The order of preference to inherit from a child.
+    my %statuses = (
+        UNKNOWN  => -1,
+        OK       => 0,
+        WARNING  => 1,
+        CRITICAL => 2,
+    );
+
+    $id //= $result->{id} // 0;
+    my $status = $result->{status};
+    $status = '' unless exists $statuses{ $status || '' };
+
+    # Merge the results if there is only a single check.
+    if (@{ $result->{results} || [] } == 1 ) {
+        my ($r) = @{ delete $result->{results} };
+        %{ $result } = ( %{ $result }, %{ $r } );
+    }
+
+    foreach my $i ( 0 .. $#{ $result->{results} || [] } ) {
+        my $r = $result->{results}->[$i];
+        $self->summarize( $r, "$id-" . ( $r->{id} // $i ) );
+
+        my $s = $r->{status};
+        $s = $forward[$s] if defined $s and $s =~ /^[0-3]$/;
+
+        $status = uc($s)
+            if $s
+            and exists $statuses{ uc $s }
+            and $statuses{ uc $s } > $statuses{ $status || 'UNKNOWN' };
+    }
+
+    # If we've found a valid status in our children,
+    # use that if we don't have our own.
+    $result->{status} //= $status if $status;
+
+    if ( not exists $result->{status} ) {
+        carp("Result $id does not have a status");
+    }
+    elsif ( not defined $result->{status} ) {
+        carp("Result $id has undefined status");
+    }
+    elsif ( not exists $statuses{ uc( $result->{status} // '' ) } ) {
+        carp("Result $id has invalid status '$result->{status}'");
+    }
+
+    $result->{status} = 'UNKNOWN' unless length $result->{status};
+
+    return $result;
 }
 
 1;

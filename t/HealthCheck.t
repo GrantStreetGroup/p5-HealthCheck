@@ -145,6 +145,7 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
             sub { [ { status => 'broken' } ] },
         ] )->check,
         {
+            'status' => 'OK',
             'results' => [
                 { 'id' => 'hashref',        'status' => 'OK' },
                 { 'id' => 'even_size_list', 'status' => 'OK' }
@@ -152,7 +153,7 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
         },
         "Results as expected"
     );
-    my $at = "at " . __FILE__ . " line " . ( __LINE__ - 9 );
+    my $at = "at " . __FILE__ . " line " . ( __LINE__ - 10 );
 
     s/0x[[:xdigit:]]+/0xHEX/g for @warnings;
 
@@ -160,6 +161,177 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
          "Invalid return from My::Check->CODE(0xHEX) (broken) $at$nl",
          "Invalid return from CODE(0xHEX) (ARRAY(0xHEX)) $at$nl",
     ], "Expected warnings";
+}
+
+{ note "Summarize validates result status";
+    my @tests = (
+        {
+            have => {
+                id      => 'false',
+                results => [
+                    { id => 'not_exists' },
+                    { id => 'undef', status => undef },
+                    { id => 'empty_string', status => '' },
+                ]
+            },
+            expect => {
+                'id'      => 'false',
+                'status'  => 'UNKNOWN',
+                'results' => [
+                    { 'id' => 'not_exists',   'status' => 'UNKNOWN' },
+                    { 'id' => 'undef',        'status' => 'UNKNOWN' },
+                    { 'id' => 'empty_string', 'status' => 'UNKNOWN' }
+                ],
+            },
+            warnings => [
+                "Result false-not_exists does not have a status",
+                "Result false-undef has undefined status",
+                "Result false-empty_string has invalid status ''",
+                "Result false does not have a status",
+            ],
+        },
+        {
+            # The extra empty results keep it from combining results
+            # so we can see what it actually does
+            have => {
+                id        => 'by_number',
+                'results' => [ {
+                        id      => 'ok',
+                        results => [ { id => 'zero', status => 0 }, {} ]
+                    },
+                    {
+                        id      => 'warning',
+                        results => [ { id => 'one', status => 1 }, {} ]
+                    },
+                    {
+                        id      => 'critical',
+                        results => [ { id => 'two', status => 2 }, {} ]
+                    },
+                    {
+                        id      => 'unknown',
+                        results => [ { id => 'three', status => 3 }, {} ]
+                    },
+                ]
+            },
+            expect => {
+                id      => 'by_number',
+                status  => 'CRITICAL',
+                results => [ {
+                        'id'      => 'ok',
+                        'status'  => 'OK',
+                        'results' => [
+                            { 'id'     => 'zero', 'status' => 0 },
+                            { 'status' => 'UNKNOWN' }
+                        ],
+                    },
+                    {
+                        'id'      => 'warning',
+                        'status'  => 'WARNING',
+                        'results' => [
+                            { 'id'     => 'one', 'status' => 1 },
+                            { 'status' => 'UNKNOWN' }
+                        ],
+                    },
+                    {
+                        'id'      => 'critical',
+                        'status'  => 'CRITICAL',
+                        'results' => [
+                            { 'id'     => 'two', 'status' => 2 },
+                            { 'status' => 'UNKNOWN' }
+                        ],
+                    },
+                    {
+                        'id'      => 'unknown',
+                        'status'  => 'UNKNOWN',
+                        'results' => [
+                            { 'id'     => 'three', 'status' => 3 },
+                            { 'status' => 'UNKNOWN' }
+                        ],
+                    },
+                ],
+            },
+            warnings => [
+                "Result by_number-ok-zero has invalid status '0'",
+                "Result by_number-ok-1 does not have a status",
+                "Result by_number-warning-one has invalid status '1'",
+                "Result by_number-warning-1 does not have a status",
+                "Result by_number-critical-two has invalid status '2'",
+                "Result by_number-critical-1 does not have a status",
+                "Result by_number-unknown-three has invalid status '3'",
+                "Result by_number-unknown-1 does not have a status",
+                "Result by_number-unknown does not have a status",
+            ],
+        },
+        {
+            have => {
+                id      => 'invalid',
+                results => [
+                    { id => 'four',  status => 4 },
+                    { id => 'other', status => 'OTHER' },
+                ]
+            },
+            expect => {
+                'id'      => 'invalid',
+                'status'  => 'UNKNOWN',
+                'results' => [
+                    { 'id' => 'four',  'status' => 4 },
+                    { 'id' => 'other', 'status' => 'OTHER' }
+                ],
+            },
+            warnings => [
+                "Result invalid-four has invalid status '4'",
+                "Result invalid-other has invalid status 'OTHER'",
+                "Result invalid does not have a status",
+            ],
+        },
+        {
+            have => {
+                id     => 'by_index',
+                results => [
+                    { status => '00' },
+                    { status => '11' },
+                    { status => '22' },
+                    { status => '33' },
+                ], },
+            expect => {
+                'id'     => 'by_index',
+                'status' => 'UNKNOWN',
+                'results' => [
+                    { 'status' => '00' },
+                    { 'status' => '11' },
+                    { 'status' => '22' },
+                    { 'status' => '33' }
+                ],
+            },
+            warnings => [
+                "Result by_index-0 has invalid status '00'",
+                "Result by_index-1 has invalid status '11'",
+                "Result by_index-2 has invalid status '22'",
+                "Result by_index-3 has invalid status '33'",
+                "Result by_index does not have a status",
+            ],
+        },
+    );
+
+    foreach my $test (@tests) {
+        my @warnings;
+        my $name = $test->{have}->{id};
+
+        my $got = do {
+            local $SIG{__WARN__} = sub { push @warnings, @_ };
+            HealthCheck->summarize( $test->{have} );
+        };
+        my $at = "at " . __FILE__ . " line " . ( __LINE__ - 2 );
+
+        is_deeply( $got, $test->{expect}, "$name Summarized statuses" )
+            || diag explain $got ;
+
+        is_deeply(
+            \@warnings,
+            [ map {"$_ $at$nl"} @{ $test->{warnings} || [] } ],
+            "$name: Warned about incorrect status"
+        ) || diag explain \@warnings;
+    }
 }
 
 { note "Calling Conventions";
@@ -306,6 +478,7 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
 
     is_deeply $c->check, {
         'id'      => 'main',
+        'status'  => 'CRITICAL',
         'tags'    => ['default'],
         'results' => [
             { 'status' => 'OK' },
@@ -313,6 +486,7 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
             { 'id'     => 'fast_easy', 'status' => 'OK' },
             {
                 'id'      => 'subcheck',
+                'status'  => 'CRITICAL',
                 'results' => [
                     { 'id'     => 'subcheck_default', 'status' => 'OK' },
                     { 'status' => 'CRITICAL' }
@@ -329,6 +503,7 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
 
     is_deeply $c->check( tags => ['easy'] ), {
         'id'      => 'main',
+        'status'  => 'OK',
         'tags'    => ['default'],
         'results' => [
             { 'id' => 'fast_easy', 'status' => 'OK' },
@@ -340,14 +515,19 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
         ],
     }, "Check with 'easy' tags runs checks tagged easy";
 
-    # Because the "subcheck" doesn't have a "hard" tag
-    # it doesn't get run, so none of its checks get run
-    # so there are no results.
-    is_deeply $c->check( tags => ['hard'] ), {
-        'id'      => 'main',
-        'tags'    => ['default'],
-        'results' => [],
-    }, "Check with 'hard' tags runs no checks, so no results";
+    { local $SIG{__WARN__} = sub { };
+        # Because the "subcheck" doesn't have a "hard" tag
+        # it doesn't get run, so none of its checks get run
+        # so there are no results.
+        is_deeply $c->check( tags => ['hard'] ),
+            {
+            'id'      => 'main',
+            'tags'    => ['default'],
+            'status'  => 'UNKNOWN',
+            'results' => [],
+            },
+            "Check with 'hard' tags runs no checks, so no results";
+    }
 }
 
 done_testing;

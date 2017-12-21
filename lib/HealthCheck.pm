@@ -479,6 +479,10 @@ Expects it to be one of C<OK>, C<WARNING>, C<CRITICAL>, or C<UNKNOWN>.
 
 Also carps if it does not exist.
 
+=item results
+
+Complains if it is not an arrayref.
+
 =back
 
 Modifies the passed in hashref in-place.
@@ -504,14 +508,30 @@ sub summarize {
     my $status = $result->{status};
     $status = '' unless exists $statuses{ $status || '' };
 
-    # Merge the results if there is only a single check.
-    if (@{ $result->{results} || [] } == 1 ) {
-        my ($r) = @{ delete $result->{results} };
-        %{ $result } = ( %{ $result }, %{ $r } );
+    my @results;
+    if ( exists $result->{results} ) {
+        if ( ( ref $result->{results} || '' ) eq 'ARRAY' ) {
+
+            # Merge the results if there is only a single check.
+            if ( @{ $result->{results} } == 1 ) {
+                my ($r) = @{ delete $result->{results} };
+                %{$result} = ( %{$result}, %{$r} );
+            }
+            else {
+                @results = @{ $result->{results} };
+            }
+        }
+        else {
+            my $disp
+                = defined $result->{results}
+                ? "invalid results '$result->{results}'"
+                : 'undefined results';
+            carp("Result $id has $disp");
+        }
     }
 
-    foreach my $i ( 0 .. $#{ $result->{results} || [] } ) {
-        my $r = $result->{results}->[$i];
+    foreach my $i ( 0 .. $#results ) {
+        my $r = $results[$i];
         $self->summarize( $r, "$id-" . ( $r->{id} // $i ) );
 
         my $s = $r->{status};

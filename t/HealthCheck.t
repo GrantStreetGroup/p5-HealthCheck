@@ -600,6 +600,62 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
     ], "Got warnings about invalid IDs" ) || diag explain \@warnings;
 }
 
+{ note "Timestamp must be ISO8601";
+    my $warnings_ok = sub {
+        local $Test::Builder::Level = $Test::Builder::Level + 1;
+        my ($timestamp, $num_warnings, $message) = @_;
+        $message ||= $timestamp;
+
+        my @warnings;
+        {
+            local $SIG{__WARN__} = sub { push @warnings, @_ };
+            HealthCheck->summarize({ status => 'OK', timestamp => $timestamp });
+        }
+        my $at = "at " . __FILE__ . " line " . ( __LINE__ - 2 );
+        my @expect = ("Result 0 has an invalid timestamp '$timestamp' $at$nl")
+            x ( $num_warnings || 0 );
+
+        is_deeply \@warnings, \@expect, "$message: Expected warnings";
+    };
+
+    my @tests = (
+        '2017',                    '0001',
+        '201712',                  '2017-12',
+        '20171225',                '2017-12-25',
+        '2017-12-25 12:34:56',     '2017-12-25T12:34:56',
+        '20171225 123456',         '20171225T123456',
+        '2017-12-25 12:34:56.001', '2017-12-25T12:34:56.001',
+        '20171225 123456.001',     '20171225T123456.001',
+    );
+    my %ok = map { $_ => 1 } @tests;
+
+    foreach my $ok (@tests) {
+        $warnings_ok->( $ok );
+
+        #use Data::Dumper 'Dumper'; warn Dumper \%+;
+
+        $warnings_ok->( "1${ok}", 1 );
+        $warnings_ok->( "${ok}1", 1 ) unless $ok =~ /\./;
+
+        foreach my $i ( 0 .. length($ok) - 1 ) {
+            my $nok = $ok;
+            my $removed = substr( $nok, $i, 1, '' );
+            last if $removed eq '.';    # can have shorter ms.
+            next if $ok{$nok};
+            $warnings_ok->( $nok, 1 );
+        }
+    }
+
+    foreach my $nok (
+        '2017-12-25 12:34:56.', '2017-12-25T12:34:56.',
+        '20171225 123456.',     '20171225T123456.',
+        '',
+        )
+    {
+        $warnings_ok->( $nok, 1 );
+    }
+}
+
 done_testing;
 
 sub check       { +{ status => 'OK', label => 'Local' } }

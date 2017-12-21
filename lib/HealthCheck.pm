@@ -9,6 +9,23 @@ use warnings;
 
 use Carp;
 
+# From the O'Reilly Regular Expressions Cookbook 2E, sorta
+# https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s07.html
+my $iso8601_timestamp = qr/^(?:
+    (?P<year>[0-9]{4})(?P<hyphen>-)?
+    (?P<month>1[0-2]|0[1-9])(?(<hyphen>)-)
+    (?P<day>3[01]|0[1-9]|[12][0-9])
+    (?:
+        [T ]
+        (?P<hour>2[0-3]|[01][0-9])(?(<hyphen>):)
+        (?P<minute>[0-5][0-9])(?(<hyphen>):)
+        (?P<second>[0-5][0-9])
+        (?: \. (?P<ms>\d+) )?
+    )?
+    | (?P<year>[0-9]{4})(?P<hyphen>-)?(?P<month>1[0-2]|0[1-9])
+    | (?P<year>[0-9]{4})
+)$/x;
+
 =head1 NAME
 
 HealthCheck - Health Check Runner
@@ -488,6 +505,10 @@ Complains if it is not an arrayref.
 Complains if the it contains anything but
 lowercase ascii letters, numbers, and underscores.
 
+=item timestamp
+
+An ISO8601 timestamp.
+
 =back
 
 Modifies the passed in hashref in-place.
@@ -557,6 +578,17 @@ sub summarize {
         unless ( defined $rid and $rid =~ /^[a-z0-9_]+$/ ) {
             my $disp_id = defined $rid ? "invalid id '$rid'" : 'undefined id';
             carp("Result $id has an $disp_id");
+        }
+    }
+
+    if ( exists $result->{timestamp} ) {
+        my $ts = $result->{timestamp};
+        unless ( defined $ts and $ts =~ /$iso8601_timestamp/ ) {
+            my $disp_timestamp
+                = defined $ts
+                ? "invalid timestamp '$ts'"
+                : 'undefined timestamp';
+            carp("Result $id has an $disp_timestamp");
         }
     }
 

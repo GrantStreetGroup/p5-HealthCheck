@@ -26,10 +26,6 @@ my $iso8601_timestamp = qr/^(?:
     | (?P<year>[0-9]{4})
 )$/x;
 
-=head1 NAME
-
-HealthCheck - Health Check Runner
-
 =head1 SYNOPSIS
 
     use HealthCheck;
@@ -72,13 +68,13 @@ HealthCheck - Health Check Runner
 
     my @tags = $checker->tags;    # returns fast, cheap
 
-    my %result = %{ $checker->check };
+    my %result = %{ $checker->check( tags => ['cheap'] ) };
 
 
     package My::Checker;
 
     # A checker class or object just needs to have either
-    # a # check method, which is used by default,
+    # a check method, which is used by default,
     # or another method as specified in a hash config.
 
     sub new { bless {}, $_[0] }
@@ -101,12 +97,12 @@ HealthCheck - Health Check Runner
         };
     }
 
-C<%result> will be
+C<%result> will be from the subset of checks run due to the tags.
 
     'id'      => 'main_checker',
     'label'   => 'Main Health Check',
-    'status'  => 'CRITICAL',
-    'tags'    => [qw( fast cheap )],
+    'status'  => 'WARNING',
+    'tags'    => [ 'fast', 'cheap' ],
     'results' => [
         { 'id' => 'coderef',  'status' => 'OK' },
         { 'id' => 'my_check', 'status' => 'WARNING' },
@@ -114,94 +110,27 @@ C<%result> will be
             'id'      => 'my_health_check',
             'label'   => 'My Health Check',
             'status'  => 'WARNING',
-            'tags'    => [qw( cheap easy )],
+            'tags'    => [ 'cheap', 'easy' ],
             'other'   => 'Other details to include',
             'results' => [
                 { 'id' => 'class_method',  'status' => 'WARNING' },
                 { 'id' => 'object_method', 'status' => 'WARNING' },
-            ]
-        },
-        {
-            'id'     => 'another_check',
-            'label'  => 'A Super custom check',
-            'status' => 'CRITICAL'
+            ],
         },
     ],
-
-Specifying C<tags> runs only tuhe subset of checks that match the tags.
-
-    $checker->check( tags => ['fast'] );
-    # returns
-    # {
-    #     'id'      => 'main_checker',
-    #     'label'   => 'Main Health Check',
-    #     'status'  => 'CRITICAL',
-    #     'tags'    => [ 'fast', 'cheap' ],
-    #     'results' => [
-    #         { 'id' => 'coderef',  'status' => 'OK' },
-    #         { 'id' => 'my_check', 'status' => 'WARNING' },
-    #         {
-    #             'id'     => 'another_check',
-    #             'label'  => 'A Super custom check',
-    #             'status' => 'CRITICAL',
-    #         }
-    #     ],
-    # }
-
-    $checker->check( tags => ['cheap'] );
-    # returns
-    # {
-    #     'id'      => 'main_checker',
-    #     'label'   => 'Main Health Check',
-    #     'status'  => 'WARNING',
-    #     'tags'    => [ 'fast', 'cheap' ],
-    #     'results' => [
-    #         { 'id' => 'coderef',  'status' => 'OK' },
-    #         { 'id' => 'my_check', 'status' => 'WARNING' },
-    #         {
-    #             'id'      => 'my_health_check',
-    #             'label'   => 'My Health Check',
-    #             'status'  => 'WARNING',
-    #             'tags'    => [ 'cheap', 'easy' ],
-    #             'other'   => 'Other details to include',
-    #             'results' => [
-    #                 { 'id' => 'class_method',  'status' => 'WARNING' },
-    #                 { 'id' => 'object_method', 'status' => 'WARNING' },
-    #             ],
-    #         },
-    #     ],
-    # }
-
-    $checker->check( tags => ['easy'] );
-    # returns
-    # {
-    #     'id'      => 'main_checker',
-    #     'label'   => 'Main Health Check',
-    #     'status'  => 'CRITICAL',
-    #     'tags'    => [ 'fast', 'cheap' ],
-    #     'results' => [ {
-    #             'id'      => 'my_health_check',
-    #             'label'   => 'My Health Check',
-    #             'status'  => 'WARNING',
-    #             'tags'    => [ 'cheap', 'easy' ],
-    #             'other'   => 'Other details to include',
-    #             'results' => [
-    #                 { 'id' => 'class_method',  'status' => 'WARNING' },
-    #                 { 'id' => 'object_method', 'status' => 'WARNING' }
-    #             ],
-    #         },
-    #         {
-    #             'id'     => 'another_check',
-    #             'label'  => 'A Super custom check',
-    #             'status' => 'CRITICAL'
-    #         }
-    #     ],
-    # }
 
 =head1 DESCRIPTION
 
 Allows you to create callbacks that check the health of your application
 and return a status result.
+
+There are several things this is trying to enable.
+A fast HTTP endpoint that can be used to verify that a web app can
+serve traffic.
+A more complete check that verifies all the things work after a deployment.
+The ability for a script, such as a cronjob, to verify that it's dependencies
+are available before starting work.
+Different sorts of monitoring checks that are defined in your codebase.
 
 Results returned by these checks should correspond to the GSG
 L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
@@ -426,6 +355,11 @@ sub check {
 
     return $self->summarize( \%ret );
 }
+
+=head1 INTERNALS
+
+These methods may be useful for subclassing,
+but are not intended for general use.
 
 =head2 should_run
 

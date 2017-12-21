@@ -558,6 +558,48 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
     ], "Got warnings about invalid results") || diag explain \@warnings;
 }
 
+{ note "Complain about invalid ID";
+    my @warnings;
+
+    my $at = "at " . __FILE__ . " line " . ( __LINE__ + 3 );
+    {
+        local $SIG{__WARN__} = sub { push @warnings, @_ };
+        HealthCheck->summarize({
+            id      => 'fine',
+            status  => 'OK',
+            results => [
+                { status => 'OK' }, # nonexistent is OK
+                map +{ status => 'OK', id => $_ },
+                    'ok',
+                    'ok_with_underscores',
+                    'ok_with_1_number',
+                    'ok_1_with_2_numbers_3_intersperced',
+                    '_ok_with_leading_underscore',
+                    '1_ok_with_leading_number',
+                    undef,
+                    '', # empty string
+                    'Not_OK_With_Capital_Letters',
+                    'Not_ok_with_capitols_like_Washington',
+                    'not-ok-with-dashes',
+                    'not ok with spaces',
+                    'not/ok/with/slashes',
+                    'not_ok_"quoted"',
+            ]
+        } );
+    }
+
+    is_deeply( \@warnings, [ map { "Result $_ $at$nl" }
+        "fine-7 has an undefined id",
+        "fine- has an invalid id ''",
+        "fine-Not_OK_With_Capital_Letters has an invalid id 'Not_OK_With_Capital_Letters'",
+        "fine-Not_ok_with_capitols_like_Washington has an invalid id 'Not_ok_with_capitols_like_Washington'",
+        "fine-not-ok-with-dashes has an invalid id 'not-ok-with-dashes'",
+        "fine-not ok with spaces has an invalid id 'not ok with spaces'",
+        "fine-not/ok/with/slashes has an invalid id 'not/ok/with/slashes'",
+        q{fine-not_ok_"quoted" has an invalid id 'not_ok_"quoted"'},
+    ], "Got warnings about invalid IDs" ) || diag explain \@warnings;
+}
+
 done_testing;
 
 sub check       { +{ status => 'OK', label => 'Local' } }

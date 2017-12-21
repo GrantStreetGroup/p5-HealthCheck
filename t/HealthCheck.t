@@ -530,6 +530,34 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
     }
 }
 
+{ note "Validate and complain results 'results' key";
+    my @warnings;
+
+    my $at = "at " . __FILE__ . " line " . ( __LINE__ + 3 );
+    {
+        local $SIG{__WARN__} = sub { push @warnings, @_ };
+        HealthCheck->summarize( {
+            id      => 'fine',
+            status  => 'OK',
+            results => [
+                { status => 'OK' },    # nonexistent is OK
+                map +{ status => 'OK', results => $_ },
+                    undef,
+                    '',
+                    'a-string',
+                    {},
+            ] } );
+    }
+
+    s/0x[[:xdigit:]]+/0xHEX/g for @warnings;
+    is_deeply( \@warnings, [ map {"Result $_ $at$nl"} 
+        "fine-1 has undefined results",
+        "fine-2 has invalid results ''",
+        "fine-3 has invalid results 'a-string'",
+        "fine-4 has invalid results 'HASH(0xHEX)'",
+    ], "Got warnings about invalid results") || diag explain \@warnings;
+}
+
 done_testing;
 
 sub check       { +{ status => 'OK', label => 'Local' } }

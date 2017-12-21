@@ -480,6 +480,11 @@ Also carps if it does not exist.
 
 Complains if it is not an arrayref.
 
+=item id
+
+Complains if the it contains anything but
+lowercase ascii letters, numbers, and underscores.
+
 =back
 
 Modifies the passed in hashref in-place.
@@ -543,6 +548,14 @@ sub summarize {
     # If we've found a valid status in our children,
     # use that if we don't have our own.
     $result->{status} //= $status if $status;
+
+    if ( exists $result->{id} ) {
+        my $rid = $result->{id};
+        unless ( defined $rid and $rid =~ /^[a-z0-9_]+$/ ) {
+            my $disp_id = defined $rid ? "invalid id '$rid'" : 'undefined id';
+            carp("Result $id has an $disp_id");
+        }
+    }
 
     if ( not exists $result->{status} ) {
         carp("Result $id does not have a status");

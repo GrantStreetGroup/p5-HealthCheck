@@ -124,13 +124,28 @@ C<%result> will be from the subset of checks run due to the tags.
 Allows you to create callbacks that check the health of your application
 and return a status result.
 
-There are several things this is trying to enable.
+There are several things this is trying to enable:
+
+=over
+
+=item *
+
 A fast HTTP endpoint that can be used to verify that a web app can
 serve traffic.
+
+=item *
 A more complete check that verifies all the things work after a deployment.
+
+=item *
+
 The ability for a script, such as a cronjob, to verify that it's dependencies
 are available before starting work.
+
+=item *
+
 Different sorts of monitoring checks that are defined in your codebase.
+
+=back
 
 Results returned by these checks should correspond to the GSG
 L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
@@ -211,12 +226,12 @@ several common cases are detected and used to fill out the check.
 
 =item coderef
 
-If passed a coderef, this will called as the C<check> without an C<invocant>.
+If passed a coderef, this will be called as the C<check> without an C<invocant>.
 
 =item object
 
-If a blessed object is passed in,
-if it has a C<check> method use that for the C<check>,
+If a blessed object is passed in
+and it has a C<check> method, use that for the C<check>,
 otherwise throw an exception.
 
 =item string
@@ -436,7 +451,7 @@ Complains if it is not an arrayref.
 
 =item id
 
-Complains if the it contains anything but
+Complains if the id contains anything but
 lowercase ascii letters, numbers, and underscores.
 
 =item timestamp

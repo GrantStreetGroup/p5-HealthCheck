@@ -6,52 +6,107 @@ use HealthCheck::Diagnostic;
 
 my $nl = $] >= 5.016 ? ".\n" : "\n";
 
-TODO:
-{ note "Results with no checks";
+{ note "Object check with no run method defined";
     local $@;
-    eval { My::HealthCheck::Diagnostic->new->check( { status => 'OK' } ) };
+    my $diagnostic = eval { My::HealthCheck::Diagnostic->new };
+    ok !$@, "No exception from ->new";
+
+    eval { $diagnostic->check };
     my $at = "at " . __FILE__ . " line " . ( __LINE__ - 1 );
-    local $TODO = "Not sure how this should fail yet.";
-    is $@, "... $at$nl",
-        "Trying to run a check with no checks results in exception";
+    is $@, qq{My::HealthCheck::Diagnostic does not implement a 'run' method $at$nl},
+        "Trying to run a check with no run method results in exception";
 }
 
-{ note "Calling Conventions";
+{ note "Class check with no run method defined";
+    local $@;
+    eval { My::HealthCheck::Diagnostic->check };
+    my $at = "at " . __FILE__ . " line " . ( __LINE__ - 1 );
+    is $@, qq{My::HealthCheck::Diagnostic does not implement a 'run' method $at$nl},
+        "Trying to run a check with no run method results in exception";
 }
 
-TODO:
-{ note "Results as even-sized-list or hashref";
+my @results;
+no warnings 'once';
+*My::HealthCheck::Diagnostic::run = sub { @results };
+use warnings 'once';
+
+{ note "Results as different types";
     my @warnings;
     local $SIG{__WARN__} = sub { push @warnings, @_ };
 
-    local $TODO = "Not yet sure the convention for checks";
-    is_deeply(
-        My::HealthCheck::Diagnostic->check( { results => [
-            { id => 'hashref', status => 'OK' },
-            #'broken',
-            #[ id => 'even_size_list', status => 'OK' ],
-            #[ { status => 'broken' } ],
-        ] } ),
-        {
-            'status' => 'OK',
-            'results' => [
-                { 'id' => 'hashref',        'status' => 'OK' },
-                { 'id' => 'even_size_list', 'status' => 'OK' }
-            ],
-        },
-        "Results as expected"
-    );
-    my $at = "at " . __FILE__ . " line " . ( __LINE__ - 10 );
+    my $warning_is = sub {
+        local $Test::Builder::Level = $Test::Builder::Level + 1;
+        my ($message) = @_;
 
-    s/0x[[:xdigit:]]+/0xHEX/g for @warnings;
+        my $line = ( caller(0) )[2] - 2;
+        my $at = 'at ' . __FILE__ . " line $line";
 
-    is_deeply \@warnings, [
-         "Invalid return from My::Check->CODE(0xHEX) (broken) $at$nl",
-         "Invalid return from CODE(0xHEX) (ARRAY(0xHEX)) $at$nl",
-    ], "Expected warnings";
+        my $warning = shift @warnings;
+        $warning =~ s/0x[[:xdigit:]]+/0xHEX/g if $warning;
+        is $warning, "$message $at$nl";
+    };
+
+    @results = ({ label => 'As Class', status => 'WARNING' });
+    my $expect = $results[0];
+
+    is_deeply( My::HealthCheck::Diagnostic->check, $expect,
+        "Called as a class has expected results from hashref");
+    is_deeply( My::HealthCheck::Diagnostic->new->check, $expect,
+        "Called as an object has expected results from hashref");
+
+    ok !@warnings, "No warnings generated with hashref results";
+
+    @results = %{ $results[0] };
+    is_deeply( My::HealthCheck::Diagnostic->check, $expect,
+        "Called as a class has expected results from even-sized-list");
+    is_deeply( My::HealthCheck::Diagnostic->new->check, $expect,
+        "Called as an object has expected results from even-sized-list");
+
+    ok !@warnings, "No warnings generated with even-sized-list results";
+
+    @results = ( 'broken' );
+    $expect = { status => 'UNKNOWN' };
+    is_deeply( My::HealthCheck::Diagnostic->check, $expect,
+        "Called as a class has expected string result");
+    $warning_is->(
+        "Invalid return from My::HealthCheck::Diagnostic->run (broken)");
+    is_deeply( My::HealthCheck::Diagnostic->new->check, $expect,
+        "Called as an object has expected results from string result");
+    $warning_is->(
+        "Invalid return from My::HealthCheck::Diagnostic->run (broken)");
+
+    ok !@warnings, "No unexpected warnings generated";
+
+    @results = ( [ { status => 'broken' } ] );
+    $expect = { status => 'UNKNOWN' };
+    is_deeply( My::HealthCheck::Diagnostic->check, $expect,
+        "Called as a class has expected arrayref result");
+    $warning_is->(
+        "Invalid return from My::HealthCheck::Diagnostic->run (ARRAY(0xHEX))");
+    is_deeply( My::HealthCheck::Diagnostic->new->check, $expect,
+        "Called as an object has expected results from arrayref result");
+    $warning_is->(
+        "Invalid return from My::HealthCheck::Diagnostic->run (ARRAY(0xHEX))");
+
+    ok !@warnings, "No unexpected warnings generated";
 }
 
-TODO:
+{ note "Override 'check'";
+    my @warnings;
+    local $SIG{__WARN__} = sub { push @warnings, @_ };
+
+    no warnings 'once';
+    local *My::HealthCheck::Diagnostic::check = sub { 'invalid' };
+    use warnings 'once';
+
+    is_deeply( My::HealthCheck::Diagnostic->check, 'invalid',
+        "Called as a class has expected invalid result");
+    ok !@warnings, "No validation, no warnings as overridden class method";
+    is_deeply( My::HealthCheck::Diagnostic->new->check, 'invalid',
+        "Called as an object has expected results from arrayref result");
+    ok !@warnings, "No validation, no warnings as overridden instance method";
+}
+
 { note "Set and retrieve tags";
     is_deeply [ My::HealthCheck::Diagnostic->new->tags ], [],
         "No tags set, no tags returned";
@@ -60,11 +115,8 @@ TODO:
         My::HealthCheck::Diagnostic->new( tags => [qw(foo bar)] )->tags ],
         [qw( foo bar )], "Returns the tags passed in.";
 
-    local $TODO = "Should not throw an exception";
-    eval {
     is_deeply [ My::HealthCheck::Diagnostic->tags ], [],
         "Class method 'tags' has no tags, but also no exception";
-    }; ok !$@, "No exception from ->tags as class method";
 }
 
 { note "Summarize validates result status";

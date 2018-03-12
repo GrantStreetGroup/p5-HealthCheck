@@ -31,18 +31,46 @@ my $iso8601_timestamp = qr/^(?:
     package HealthCheck::Diagnostic::Sample;
     use parent 'HealthCheck::Diagnostic';
 
+    # Required implementation of the check
+    # or you can override the 'check' method and avoid the
+    # automatic call to 'summarize'
+    sub run {
+        my ( $class_or_self, %params ) = @_;
+
+        # will be passed to 'summarize' by 'check'
+        return { %params, status => 'OK' };
+    }
+
 =head1 DESCRIPTION
 
 A base class for writing Health Checks.
+Provides some helpers for validation of results returned from the check.
+
+This module does not require that an instance is created to run checks against.
+If your code requires an instance, you will need to verify that yourself.
 
 Results returned by these checks should correspond to the GSG
 L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
+
+=head1 REQUIRED METHODS
+
+=head2 run
+
+    sub run {
+        my ( $class_or_self, %params ) = @_;
+        return { %params, status => 'OK' };
+    }
+
+A subclass must either implement a C<run> method which L</check> will
+call and pass the return value through L</summarize>,
+or override C<check> and handle validation itself.
 
 =head1 METHODS
 
 =head2 new
 
-    my $checker = HealthCheck::Diagnostic::Sample->new( id => 'my-checker' );
+    my $diagnostic
+        = HealthCheck::Diagnostic::Sample->new( id => 'my-checker' );
 
 =head3 ATTRIBUTES
 
@@ -89,20 +117,41 @@ Read only accessor that returns the list of tags registered with this object.
 
 =cut
 
-sub tags { @{ shift->{tags} || [] } }
+sub tags { return unless ref $_[0]; @{ shift->{tags} || [] } }
 
 =head2 check
 
     my %results = %{ $checker->check(%params) }
 
+This method is what is normally called by the L<HealthCheck> runner,
+but this version expects you to implement a L</run> method for the
+body of your check.
+This is just a thin wrapper that passes the return value from L</run>
+to L</summarize>.
+
 =cut
 
 sub check {
-    my ( $self, @params ) = @_;
+    my ( $class_or_self, @params ) = @_;
+
     # Allow either a hashref or even-sized list of params
     my %params = @params == 1 && ( ref $params[0] || '' ) eq 'HASH'
         ? %{ $params[0] } : @params;
-    return $self->summarize( \%params );
+
+    my $class = ref $class_or_self || $class_or_self;
+    croak("$class does not implement a 'run' method")
+        unless $class_or_self->can('run');
+
+    my @res = $class_or_self->run(%params);
+
+    if ( @res == 1 && ( ref $res[0] || '' ) eq 'HASH' ) { }    # noop, OK
+    elsif ( @res % 2 == 0 ) { @res = {@res}; }
+    else {
+        carp("Invalid return from $class\->run (@res)");
+        @res = { status => 'UNKNOWN' };
+    }
+
+    return $class_or_self->summarize(@res);
 }
 
 =head1 INTERNALS

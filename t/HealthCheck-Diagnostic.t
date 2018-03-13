@@ -91,6 +91,17 @@ use warnings 'once';
     ok !@warnings, "No unexpected warnings generated";
 }
 
+{ note "Exception in 'run'";
+    no warnings 'redefine';
+    local *My::HealthCheck::Diagnostic::run = sub { die 'ded' };
+    use warnings 'redefine';
+    my $at = "at " . __FILE__ . " line " . ( __LINE__ - 2 );
+    is_deeply( My::HealthCheck::Diagnostic->check, {
+            status => 'CRITICAL',
+            info   => "ded $at.\n",
+        }, "Exception in run was caught with CRITICAL consequences" );
+}
+
 { note "Override 'check'";
     my @warnings;
     local $SIG{__WARN__} = sub { push @warnings, @_ };

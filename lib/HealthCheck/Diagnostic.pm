@@ -151,7 +151,9 @@ sub check {
     croak("$class does not implement a 'run' method")
         unless $class_or_self->can('run');
 
-    my @res = $class_or_self->run(%params);
+    local $@;
+    my @res = eval { local $SIG{__DIE__}; $class_or_self->run(%params) };
+    @res = { status => 'CRITICAL', info => $@ } if $@;
 
     if ( @res == 1 && ( ref $res[0] || '' ) eq 'HASH' ) { }    # noop, OK
     elsif ( @res % 2 == 0 ) { @res = {@res}; }

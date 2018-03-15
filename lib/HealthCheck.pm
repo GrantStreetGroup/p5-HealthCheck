@@ -55,23 +55,29 @@ use Carp;
     my %result = %{ $checker->check( tags => ['cheap'] ) };
 
 
-    package My::Checker;
-
     # A checker class or object just needs to have either
     # a check method, which is used by default,
     # or another method as specified in a hash config.
+    package My::Checker;
 
-    sub new { bless {}, $_[0] }
+    # Optionally subclass HealthCheck::Diagnostic
+    use parent 'HealthCheck::Diagnostic';
 
-    # Any checks *must* return a valid "Health Check Result" hashref.
-
-    sub check {
+    # and provide a 'run' method, the Diagnostic base class will
+    # pass your results through the 'summarize' helper that
+    # will add warnings about invalid values as well as
+    # summarizing multiple results.
+    sub run {
         return {
             id => ( ref $_[0] ? "object_method" : "class_method" ),
             status => "WARNING",
         };
     }
 
+    # Any checks *must* return a valid "Health Check Result" hashref.
+
+    # You can add your own check that doesn't call 'summarize'
+    # or, overload the 'check' helper in the parent class.
     sub another_check {
         my ($self, %params) = @_;
         return {
@@ -133,6 +139,9 @@ Different sorts of monitoring checks that are defined in your codebase.
 
 Results returned by these checks should correspond to the GSG
 L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
+
+You may want to use L<HealthCheck::Diagnostic> to simplify writing your
+check slightly.
 
 =head1 METHODS
 
@@ -422,4 +431,10 @@ Perl 5.10 or higher.
 =head1 CONFIGURATION AND ENVIRONMENT
 
 None
+
+=head1 SEE ALSO
+
+L<HealthCheck::Diagnostic>
+
+The GSG L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>
 

@@ -83,6 +83,9 @@ or override C<check> and handle validation itself.
 
 =head3 ATTRIBUTES
 
+Attributes set on the object created will be copied into the result
+by L</summarize>, without overriding anything already set in the result.
+
 =over
 
 =item tags
@@ -130,7 +133,7 @@ sub tags { return unless ref $_[0]; @{ shift->{tags} || [] } }
 
 =head2 check
 
-    my %results = %{ $diagnostic->check(\%params) }
+    my %results = %{ $diagnostic->check(%params) }
 
 This method is what is normally called by the L<HealthCheck> runner,
 but this version expects you to implement a L</run> method for the
@@ -172,6 +175,9 @@ sub check {
 Summarizes and validates the result.
 Used by L</check>.
 
+Copies any attributes set on the C<$diagnostic> object into the result,
+unless those values are overridden.
+
 Carps a warning if validation fails on several keys.
 
 =over
@@ -203,6 +209,12 @@ Modifies the passed in hashref in-place.
 
 sub summarize {
     my ( $self, $result ) = @_;
+
+    if ( ref $self ) {
+        $result->{$_} = $self->{$_}
+            for grep { not exists $result->{$_} } keys %{$self};
+    }
+
     return $self->_summarize( $result, $result->{id} // 0 );
 }
 

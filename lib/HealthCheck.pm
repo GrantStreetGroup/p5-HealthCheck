@@ -354,8 +354,7 @@ sub check {
 sub run {
     my ($self, %params) = @_;
 
-    my %ret = %{$self};
-    @{ $ret{results} } = map {
+    my @results = map {
         my %c = %{$_};
         my $i = delete $c{invocant} || '';
         my $m = delete $c{check}    || '';
@@ -372,7 +371,7 @@ sub run {
         $self->should_run( $_, %params );
     } @{ $registered_checks{$self} || [] };
 
-    return \%ret;
+    return { results => \@results };
 }
 
 =head1 INTERNALS

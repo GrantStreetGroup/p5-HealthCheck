@@ -130,6 +130,52 @@ use warnings 'once';
         "Class method 'tags' has no tags, but also no exception";
 }
 
+{ note "Attributes are copied into the result";
+    @results = (
+        status => 'OK',
+
+        foo    => 1,
+
+        multi => { level => 1 },
+
+        undef  => undef,
+        empty  => '',
+        zero   => 0,
+    );
+
+    my $diagnostic = My::HealthCheck::Diagnostic->new(
+        id     => 'my_id',
+        label  => 'My Label',
+        status => 'WARNING',
+
+        foo    => 1,
+        bar    => { baz => 2 },
+
+        multi => { ignored => 1 }, # not a deep copy
+
+        undef => 'ignored',
+        empty => 'ignored',
+        zero  => 'ignored',
+    );
+    $diagnostic->{qux} = ['u'];
+
+    is_deeply( $diagnostic->check( foo => 'ignored' ), {
+        id     => "my_id",
+        label  => "My Label",
+        status => "OK",
+
+        foo => 1,
+        bar => { baz => 2 },
+        qux => ["u"],
+
+        multi => { level => 1 },
+
+        undef => undef,
+        empty => '',
+        zero  => 0,
+    }, "Copied the expected attributes to the result" );
+}
+
 { note "Summarize validates result status";
     my @tests = (
         {

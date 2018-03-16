@@ -154,7 +154,7 @@ check slightly.
 
 =head2 new
 
-    my $checker = HealthCheck->new( id => 'my-checker' );
+    my $checker = HealthCheck->new( id => 'my_checker' );
 
 =head3 ATTRIBUTES
 

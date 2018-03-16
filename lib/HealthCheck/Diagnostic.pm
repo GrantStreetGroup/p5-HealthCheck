@@ -202,6 +202,11 @@ Modifies the passed in hashref in-place.
 =cut
 
 sub summarize {
+    my ( $self, $result ) = @_;
+    return $self->_summarize( $result, $result->{id} // 0 );
+}
+
+sub _summarize {
     my ($self, $result, $id) = @_;
 
     # Indexes correspond to Nagios Plugin Return Codes
@@ -216,7 +221,6 @@ sub summarize {
         CRITICAL => 2,
     );
 
-    $id //= $result->{id} // 0;
     my $status = $result->{status};
     $status = '' unless exists $statuses{ $status || '' };
 
@@ -244,7 +248,7 @@ sub summarize {
 
     foreach my $i ( 0 .. $#results ) {
         my $r = $results[$i];
-        $self->summarize( $r, "$id-" . ( $r->{id} // $i ) );
+        $self->_summarize( $r, "$id-" . ( $r->{id} // $i ) );
 
         my $s = $r->{status};
         $s = $forward[$s] if defined $s and $s =~ /^[0-3]$/;

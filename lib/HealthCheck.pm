@@ -10,6 +10,13 @@ use warnings;
 
 use Carp;
 
+use Hash::Util::FieldHash;
+
+# Create a place outside of $self to store the checks
+# as everything in the self hashref will be copied into
+# the result.
+Hash::Util::FieldHash::fieldhash my %registered_checks;
+
 =head1 SYNOPSIS
 
     use HealthCheck;
@@ -303,7 +310,7 @@ sub register {
                 unless $c{invocant}->can( $c{check} );
         }
 
-        push @{ $self->{checks} }, \%c;
+        push @{ $registered_checks{$self} }, \%c;
     }
 
     return $self;
@@ -340,7 +347,7 @@ Main implementation of the checker is here.
 sub check {
     my ( $self, @params ) = @_;
     croak("check cannot be called as a class method") unless ref $self;
-    croak("No registered checks") unless @{ $self->{checks} || [] };
+    croak("No registered checks") unless @{ $registered_checks{$self} || [] };
     $self->SUPER::check(@params);
 }
 
@@ -363,7 +370,7 @@ sub run {
         };
     } grep {
         $self->should_run( $_, %params );
-    } @{ delete $ret{checks} };
+    } @{ $registered_checks{$self} || [] };
 
     return \%ret;
 }

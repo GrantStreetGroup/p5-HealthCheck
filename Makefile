@@ -8,8 +8,13 @@ CPANFILE_SNAPSHOT := $(shell \
   PLENV_VERSION=$$( plenv which carton 2>&1 | grep '^  5' | tail -1 ); \
   [ -n "$$PLENV_VERSION" ] && plenv local $$PLENV_VERSION; \
   carton exec perl -MFile::Spec -E \
-	'say File::Spec->abs2rel($$_) \
-		for map{ m(^(.*)/lib/perl5$$) ? "$$1/cpanfile.snapshot" : () } @INC' )
+	'($$_) = grep { -e } map{ "$$_/../../cpanfile.snapshot" } \
+		grep { m(/lib/perl5$$) } @INC; \
+		say File::Spec->abs2rel($$_) if $$_' )
+
+ifndef CPANFILE_SNAPSHOT
+	CPANFILE_SNAPSHOT := .MAKE
+endif
 
 .PHONY : test
 

@@ -239,17 +239,15 @@ sub _summarize {
     my @results;
     if ( exists $result->{results} ) {
         if ( ( ref $result->{results} || '' ) eq 'ARRAY' ) {
+            @results = @{ $result->{results} };
 
-            # Merge the results if there is only a single check.
-            if ( @{ $result->{results} } == 1 ) {
+            # Merge if there is only a single result.
+            if ( @results == 1 ) {
                 my ($r) = @{ delete $result->{results} };
                 %{$result} = ( %{$result}, %{$r} );
 
                 # Now that we've merged, need to redo everything again
                 return $self->_summarize($result, $id);
-            }
-            else {
-                @results = @{ $result->{results} };
             }
         }
         else {

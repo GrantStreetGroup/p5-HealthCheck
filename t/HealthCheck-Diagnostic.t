@@ -176,6 +176,18 @@ use warnings 'once';
     }, "Copied the expected attributes to the result" );
 }
 
+is_deeply(
+    HealthCheck::Diagnostic->summarize( {
+        results => [ { results => [ { results => [ {
+            results => [ { status => 'OK' }, { status => 'OK' } ]
+        } ] } ] } ]
+    } ),
+    {   status  => 'OK',
+        results => [ { status => 'OK' }, { status => 'OK' } ],
+    },
+    "Summarize looks at sub-results for a status"
+);
+
 { note "Summarize validates result status";
     my @tests = (
         {

@@ -244,6 +244,9 @@ sub _summarize {
             if ( @{ $result->{results} } == 1 ) {
                 my ($r) = @{ delete $result->{results} };
                 %{$result} = ( %{$result}, %{$r} );
+
+                # Now that we've merged, need to redo everything again
+                return $self->_summarize($result, $id);
             }
             else {
                 @results = @{ $result->{results} };

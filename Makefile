@@ -24,10 +24,7 @@ test : $(CPANFILE_SNAPSHOT)
 # This target requires that you add 'requires "Devel::Cover";'
 # to the cpanfile and then run "carton" to install it.
 testcoverage : $(CPANFILE_SNAPSHOT)
-	carton exec cover -delete
-	HARNESS_PERL_SWITCHES="-MDevel::Cover=-ignore,.,-select,^lib/" \
-						  carton exec prove -lr t/
-	carton exec cover -report html_basic
+	carton exec -- cover -test -ignore . -select ^lib
 
 $(CPANFILE_SNAPSHOT): .perl-version $(CPANFILE)
 	carton install
@@ -35,3 +32,5 @@ $(CPANFILE_SNAPSHOT): .perl-version $(CPANFILE)
 .perl-version:
 	plenv local $$( plenv whence carton | grep '^5' | tail -1 )
 
+clean:
+	rm -rf cover_db

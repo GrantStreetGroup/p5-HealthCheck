@@ -1,0 +1,286 @@
+=head1 Writing a HealthCheck::Diagnostic
+
+So, you need to check the health of something and are here to find out how.
+Well, lets see what we can do to help you figure that out.
+
+=head2 What is a HealthCheck Diagnostic?
+
+A health check diagnostic is a subroutine that returns a hashref in the
+L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>
+format.
+While this can be as simple as C<< sub { status => 'OK' } >>,
+you're probably here because you want to be able to share a check with other
+people, or write tests for the check, which are both great ideas that should be
+encouraged.
+
+The only requirement for a diagnostic is that it is callable
+and that it returns a hashref (or sometimes even an even-sized list) that
+includes a C<status> key and optionally some other optional keys.
+(Now, that's not entirely true as if you return a C<results> arrayref instead,
+the normal checker will summarize those results into the appropriate status)
+
+=head2 How can I make my check testable and sharable?
+
+The L<HealthCheck::Diagnostic> module provides a base for writing your
+own checks with validation of the results as a promise to conform
+to the standard.
+
+=head3 A simple diagnostic
+
+The basics of a check that does the same thing as above is as simple as:
+
+    package HealthCheck::Diagnostic::Simple;
+    use parent 'HealthCheck::Diagnostic';
+    sub run { return { status => 'OK' } }
+    1;
+
+You can then use that as a check and have that return value validated:
+
+    # As a class
+    $health_check->register( 'HealthCheck::Diagnostic::Simple' );
+
+    # As an object
+    my $diagnostic = HealthCheck::Diagnostic::Simple->new(
+        id    => "a_check",
+        label => "A Simple Check",
+        tags  => ['simple'],
+    );
+    $health_check->register($diagnostic);
+
+When using it as an object, the parent class will automatically copy a
+select set of the attributes from the C<$diagnostic> object to the result.
+With the above set of checks registered, the results look something like:
+
+    {   status  => "OK",
+        results => [
+            { status => "OK" },
+            {   id     => "a_check",
+                label  => "A Simple Check",
+                status => "OK",
+                tags   => ["simple"]
+            },
+        ],
+    }
+
+=head3 Diagnostic Parameters
+
+As a side note, I need to mention what your C<run> method will get
+as arguments when it is called by the checker.
+To make your diagnostics more flexible, several things are passed as
+arguments when the check is run.
+When a check is registered as either a
+class or object based check its C<check> method is called, which makes
+the first argument the class or object,
+however a coderef does not get that first argument.
+The rest of the arguments are whatever is passed to the C<check> method,
+which should be assumed to be an even-sized list of arguments.
+
+For example, if you call the above check with an even-sized list:
+
+    $health_check->check( foo => 'bar' );
+
+Or even a hashref, which is expanded and passed as an even-sized list:
+
+    $health_check->check( { foo => 'bar' } );
+
+Then the class based check gets the package name as a string,
+plus the parameters passed to check.
+
+    @_ = ( "HealthCheck::Diagnostic::Simple", "foo", "bar" );
+
+While the object based check is similarly called with the object
+and those same parameters.
+
+    @_ = ( $diagnostic, "foo", "bar" );
+
+Although a coderef check is only called with the parameters passed to
+the check:
+
+    $health_check->register( sub { ... } );
+    # in that sub, @_ = ( "foo", "bar" )
+
+The one parameter that, while still passed to the diagnostic,
+actually effects which diagnostics get called is the C<tags> argument.
+
+    $health_check->check( tags => ['simple'] );
+
+will only call the C<$diagnostic> check, as it has a C<'simple'> tag.
+
+=head3 A more in depth example
+
+In this example, we're going to add a check for a physical system
+to make it easier to visualize,
+a sensor system that can tell us when we should open or close the window.
+What we're going to imagine is that we have three sensors:
+inside; outside; and the window status.
+The inside sensor can tell us the current temperature,
+while the outside sensor can tell us both temperature and whether it is raining.
+The window sensor is just a boolean check for whether the window is open.
+
+
+We might initialize a diagnostic with several different sensors
+that let it decide whether our window is in a good position.
+
+    my $diagnostic = HealthCheck::Diagnostic::WindowStatus->new(
+        inside  => My::Sensor::Inside->new,
+        outside => My::Sensor::Outside->new,
+        window  => My::Sensor::Window->new,
+
+        desired_min => 20,
+        desired_max => 23,
+    );
+
+
+The implementation for that check might look something like this:
+
+    package HealthCheck::Diagnostic::WindowStatus;
+    use parent "HealthCheck::Diagnostic";
+    use strict;
+    use warnings;
+
+    sub run {
+        my ($self) = @_;
+
+        # Gather some data that we can return to be used for graphing
+        my @data = (
+            {   label => "Inside Temperature",
+                value => $self->{inside}->temp,
+            },
+            {   label => "Outside Temperature",
+                value => $self->{outside}->temp,
+            },
+            {   label => "Currently Raining",
+                value => $self->{outside}->is_raining,
+            },
+            {   label => "Window is Open",
+                value => $self->{window}->is_open,
+            },
+        );
+
+        my %res = ( status = "OK", data = \@data );
+
+        # If it's currently raining, need to close the windows
+        if ( $self->{outside}->is_raining ) {
+            if ( $self->current_state eq "open" ) {
+                $res{status} = "CRITICAL";
+                $res{info}   = "Close the window, it's raining!";
+            }
+            return \%res;
+        }
+
+        # Otherwise, see if the state we want matches the current state.
+        my $desired_state = $self->desired_state;
+        if ( $desired_state ne $self->current_state ) {
+            $res{status} = "WARNING";
+            $res{info}   = "\u$desired_state the window!";
+        }
+
+        return \%res;
+    }
+
+    sub current_state { shift->{window}->is_open ? "open" : "close" }
+
+    sub desired_state {
+        my ($self) = @_;
+
+        my $inside  = $self->{inside}->temp;
+        my $outside = $self->{outside}->temp;
+
+        # If the weather is nice outside, open the window
+        if (    $outside >= $self->{desired_min}
+            and $outside <= $self->{desired_max} )
+        {
+            return "open";
+        }
+
+        # If the outside temp is in the correct
+        # direction of our desired temp, open the window.
+        my $cold_inside    = $inside < $self->{desired_min};
+        my $hot_inside     = $inside > $self->{desired_max};
+        my $warmer_outside = $inside < $outside;
+        my $cooler_outside = $inside > $outside;
+
+        if (   ( $cold_inside and $warmer_outside )
+            or ( $hot_inside  and $cooler_outside ) )
+        {
+            return "open";
+        }
+
+        return "close";
+    }
+
+    1;
+
+
+Going through this we can pick out some important features this check
+implements,
+like inheriting from L<HealthCheck::Diagnostic>
+and defining a C<run> method.
+
+Some things to notice about the C<run> method are that it relies on other
+helper methods to make its decision about the state of the service and that
+it returns a hashref with several keys in addition to the C<status>.
+The L<info> is a human readable, short description of the result,
+something that tells a person what's going on.
+The C<data> key is a "machine readable output" of the check,
+although the output is not well defined, one use is to be compatible with
+the GSG
+L<Status API|https://support.grantstreet.com/wiki/display/DEVOPS/Status+API>
+specification, as this example shows.
+
+This Diagnostic should probably use the below C<check> override that
+validates that it is not being called as a class method.
+
+
+=head2 Useful Patterns
+
+=head3 Adding default attributes to your Diagnostics
+
+The call to C<new> can take either a hashref or an even-sized-list of
+parameters.
+
+    sub new {
+        my ($class, @params) = @_;
+
+        # Allow either a hashref or even-sized list of params
+        my %params = @params == 1 && ( ref $params[0] || '' ) eq 'HASH'
+            ? %{ $params[0] } : @params;
+
+        return $class->SUPER::new(
+            label => 'default_label',
+            %params
+        );
+    }
+
+=head3 Require calling check on an instance
+
+Sometimes your C<check> won't work as a class method and in that case,
+it's fairly easy to add validation that the check method was called on an
+instance.
+
+    sub check {
+        my ( $self, @args ) = @_;
+        croak("check cannot be called as a class method") unless ref $self;
+        return $self->SUPER::check(@args);
+    }
+
+
+=head3 Adding validation of check parameters
+
+You may want to require certain parameters to be passed to the
+C<check> to allow it to work as a class method, or just to override
+the values that may have been added to the instance.
+
+    sub check {
+        my ( $self, %params ) = @_;
+
+        my $api = $params{api};
+        $api ||= $self->{api} if ref $self;
+        croak("Valid 'api' is required") unless $api and do {
+            local $@; eval { local $SIG{__DIE__}; $api->can('ping') } };
+
+        my $res = $self->SUPER::check( %params, api => $api );
+        delete $res->{api};    # don't include the object in the result
+
+        return $res;
+    }

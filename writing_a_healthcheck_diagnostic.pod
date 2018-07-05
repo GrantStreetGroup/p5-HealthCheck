@@ -100,7 +100,7 @@ the check:
     # in that sub, @_ = ( "foo", "bar" )
 
 The one parameter that, while still passed to the diagnostic,
-actually effects which diagnostics get called is the C<tags> argument.
+actually affects which diagnostics get called is the C<tags> argument.
 
     $health_check->check( tags => ['simple'] );
 

@@ -61,6 +61,9 @@ If your code requires an instance, you will need to verify that yourself.
 Results returned by these checks should correspond to the GSG
 L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
 
+Also see the introduction to
+L<writing a HealthCheck::Diagnostic|writing_a_healthcheck_diagnostic>.
+
 =head1 REQUIRED METHODS
 
 =head2 run

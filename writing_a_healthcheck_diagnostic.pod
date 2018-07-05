@@ -112,7 +112,7 @@ In this example, we're going to add a check for a physical system
 to make it easier to visualize,
 a sensor system that can tell us when we should open or close the window.
 What we're going to imagine is that we have three sensors:
-inside; outside; and the window status.
+inside, outside, and the window status.
 The inside sensor can tell us the current temperature,
 while the outside sensor can tell us both temperature and whether it is raining.
 The window sensor is just a boolean check for whether the window is open.

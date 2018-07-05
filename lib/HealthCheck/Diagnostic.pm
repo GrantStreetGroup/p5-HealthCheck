@@ -321,3 +321,6 @@ Perl 5.10 or higher.
 
 None
 
+=head1 SEE ALSO
+
+L<Writing a HealthCheck::Diagnostic|writing_a_healthcheck_diagnostic>

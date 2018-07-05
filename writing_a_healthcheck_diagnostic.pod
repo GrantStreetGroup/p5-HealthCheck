@@ -1,4 +1,4 @@
-=head1 Writing a HealthCheck::Diagnostic
+=head1 NAME - Writing a HealthCheck::Diagnostic
 
 So, you need to check the health of something and are here to find out how.
 Well, lets see what we can do to help you figure that out.

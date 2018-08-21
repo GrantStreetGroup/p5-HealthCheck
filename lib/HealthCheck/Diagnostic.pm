@@ -61,6 +61,9 @@ If your code requires an instance, you will need to verify that yourself.
 Results returned by these checks should correspond to the GSG
 L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
 
+Implementing a diagnostic should normally be done in L<run>
+to allow use of the helper features that L</check> provides.
+
 =head1 REQUIRED METHODS
 
 =head2 run
@@ -70,9 +73,13 @@ L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+C
         return { %params, status => 'OK' };
     }
 
-A subclass must either implement a C<run> method which L</check> will
-call and pass the return value through L</summarize>,
-or override C<check> and handle validation itself.
+A subclass must either implement a C<run> method,
+which will be called by L</check>
+have its return value passed through L</summarize>,
+or override C<check> and handle all validation itself.
+
+See the L</check> method documentation for suggestions on when it
+might be overridden.
 
 =head1 METHODS
 
@@ -137,9 +144,40 @@ sub tags { return unless ref $_[0]; @{ shift->{tags} || [] } }
 
 This method is what is normally called by the L<HealthCheck> runner,
 but this version expects you to implement a L</run> method for the
-body of your check.
-This is just a thin wrapper that passes the return value from L</run>
-to L</summarize>.
+body of your diagnostic.
+This thin wrapper
+makes sure C<%params> is an even-sided list (possibly unpacking a hashref)
+before passing it to L</run>,
+trapping any exceptions,
+and passing the return value through L</summarize>.
+
+This could be used to validate parameters or to modify the the return value
+in some way.
+
+    sub check {
+        my ( $self, @params ) = @_;
+
+        # Require check as an instance method
+        croak("check cannot be called as a class method") unless ref $self;
+
+        # Allow either a hashref or even-sized list of params
+        my %params = @params == 1 && ( ref $params[0] || '' ) eq 'HASH'
+            ? %{ $params[0] } : @params;
+
+        # Validate any required parameters and that they look right.
+        my $required_param = $params{required} || $self->{required};
+        croak("The 'required' parameter is required")
+            unless $required_param and ref $required_param == 'HASH';
+
+        # Calls $self->run and then passes the result through $self->summarize
+        my $res = $self->SUPER::check( %params, required => $required_param );
+
+        # Modify the result after it has been summarized
+        delete $res->{required};
+
+        # and return it
+        return $res;
+    }
 
 =cut
 

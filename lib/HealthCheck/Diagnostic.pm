@@ -210,11 +210,17 @@ sub check {
 
     %result = %{ $diagnostic->summarize( \%result ) };
 
-Summarizes and validates the result.
-Used by L</check>.
+Validates, pre-formats, and returns the C<result> so that it is easily
+usable by HealthCheck.
 
-Copies any attributes set on the C<$diagnostic> object into the result,
-unless those values are overridden.
+The attributes on the C<$diagnostic> get copied into the C<result>.
+
+The C<status> and C<info> are summarized when we have multiple
+C<results> in the C<result>. All of the C<info> values get appended
+together. One C<status> value is selected from the list of C<status>
+values.
+
+Used by L</check>.
 
 Carps a warning if validation fails on several keys.
 

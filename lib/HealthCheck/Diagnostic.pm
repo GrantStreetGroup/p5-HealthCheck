@@ -213,7 +213,9 @@ sub check {
 Validates, pre-formats, and returns the C<result> so that it is easily
 usable by HealthCheck.
 
-The attributes on the C<$diagnostic> get copied into the C<result>.
+The attributes C<id>, C<label>, and C<tags>
+get copied from the C<$diagnostic> into the C<result>
+if they exist in the former and not in the latter.
 
 The C<status> and C<info> are summarized when we have multiple
 C<results> in the C<result>. All of the C<info> values get appended
@@ -256,7 +258,8 @@ sub summarize {
 
     if ( ref $self ) {
         $result->{$_} = $self->{$_}
-            for grep { not exists $result->{$_} } keys %{$self};
+            for grep { not exists $result->{$_} }
+            grep     { exists $self->{$_} } qw( id label tags );
     }
 
     return $self->_summarize( $result, $result->{id} // 0 );

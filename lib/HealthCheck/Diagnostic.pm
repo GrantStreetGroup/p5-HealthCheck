@@ -243,7 +243,7 @@ lowercase ascii letters, numbers, and underscores.
 
 =item timestamp
 
-An ISO8601 timestamp.
+Expected to look like an ISO8601 timestamp.
 
 =back
 

@@ -130,28 +130,30 @@ use warnings 'once';
         "Class method 'tags' has no tags, but also no exception";
 }
 
-{ note "Attributes are copied into the result";
+{
+    note "Attributes are copied into the result";
     @results = (
         status => 'OK',
 
-        foo    => 1,
+        foo => 1,
 
         multi => { level => 1 },
 
-        undef  => undef,
-        empty  => '',
-        zero   => 0,
+        undef => undef,
+        empty => '',
+        zero  => 0,
     );
 
     my $diagnostic = My::HealthCheck::Diagnostic->new(
         id     => 'my_id',
         label  => 'My Label',
         status => 'WARNING',
+        tags   => [ 'foo', 'bar' ],
 
-        foo    => 1,
-        bar    => { baz => 2 },
+        foo => 1,
+        bar => { baz => 2 },
 
-        multi => { ignored => 1 }, # not a deep copy
+        multi => { ignored => 1 },    # not a deep copy
 
         undef => 'ignored',
         empty => 'ignored',
@@ -159,21 +161,43 @@ use warnings 'once';
     );
     $diagnostic->{qux} = ['u'];
 
-    is_deeply( $diagnostic->check( foo => 'ignored' ), {
-        id     => "my_id",
-        label  => "My Label",
-        status => "OK",
+    is_deeply(
+        $diagnostic->check(
+            id     => 'ignored',
+            label  => 'ignored',
+            status => 'ignored',
+            tags   => [ 'bar', 'baz' ],    # not copied
+            foo    => 'ignored',
+        ),
+        {   id    => "my_id",
+            label => "My Label",
+            tags  => [ 'foo', 'bar' ],
 
-        foo => 1,
-        bar => { baz => 2 },
-        qux => ["u"],
+            @results,
+        },
+        "Copied only the expected attributes to the result"
+    );
 
-        multi => { level => 1 },
+    # Don't copy these if they exist, even if undef
+    push @results, ( id => undef, label => undef, tags => undef );
 
-        undef => undef,
-        empty => '',
-        zero  => 0,
-    }, "Copied the expected attributes to the result" );
+    my @warnings;
+    my $got = do {
+        local $SIG{__WARN__} = sub { push @warnings, @_ };
+        $diagnostic->check(
+            id     => 'ignored',
+            label  => 'ignored',
+            status => 'ignored',
+            tags   => ['ignored'],    # not copied
+            foo    => 'ignored',
+        );
+    };
+    my $at = sprintf "at %s line %d.", __FILE__, __LINE__ - 8;
+
+    is_deeply $got, {@results},
+        "Didn't copy anything that was returned in the result already";
+    is_deeply \@warnings, ["Result 0 has an undefined id $at\n"],
+        "Warned about undef id in result";
 }
 
 is_deeply(

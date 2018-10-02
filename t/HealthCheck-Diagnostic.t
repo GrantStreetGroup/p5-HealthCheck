@@ -236,7 +236,6 @@ is_deeply(
                 "Result false-not_exists does not have a status",
                 "Result false-undef has undefined status",
                 "Result false-empty_string has invalid status ''",
-                "Result false does not have a status",
             ],
         },
         {

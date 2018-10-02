@@ -316,7 +316,7 @@ sub _summarize {
 
             $status = $s
                 if exists $statuses{$s}
-                and $statuses{$s} > ( $statuses{$status} // 1 );
+                and $statuses{$s} > ( $statuses{$status} // 0 );
         }
     }
 

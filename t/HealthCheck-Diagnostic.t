@@ -194,9 +194,9 @@ use warnings 'once';
     };
     my $at = sprintf "at %s line %d", __FILE__, __LINE__ - 8;
 
-    is_deeply $got, {@results},
+    is_deeply $got, { @results, status => 'UNKNOWN', info => 'undefined id' },
         "Didn't copy anything that was returned in the result already";
-    is_deeply \@warnings, ["Result 0 has an undefined id $at$nl"],
+    is_deeply \@warnings, ["Result 0 has undefined id $at$nl"],
         "Warned about undef id in result";
 }
 
@@ -217,23 +217,37 @@ is_deeply(
         {
             have => {
                 id      => 'false',
+                info    => 'False Info',
                 results => [
-                    { id => 'not_exists' },
-                    { id => 'undef', status => undef },
-                    { id => 'empty_string', status => '' },
+                    { id => 'not_exists', info => 'Not Exists' },
+                    { id => 'undef',      info => 'Undef', status => undef },
+                    {   id     => 'empty_string',
+                        info   => 'Empty String',
+                        status => ''
+                    },
                 ]
             },
             expect => {
                 'id'      => 'false',
                 'status'  => 'UNKNOWN',
+                'info'    => 'False Info',
                 'results' => [
-                    { 'id' => 'not_exists',   'status' => 'UNKNOWN' },
-                    { 'id' => 'undef',        'status' => 'UNKNOWN' },
-                    { 'id' => 'empty_string', 'status' => 'UNKNOWN' }
-                ],
+                    {   'id'     => 'not_exists',
+                        'status' => 'UNKNOWN',
+                        'info'   => "Not Exists\nmissing status"
+                    },
+                    {   'id'     => 'undef',
+                        'status' => 'UNKNOWN',
+                        'info'   => "Undef\nundefined status"
+                    },
+                    {   'id'     => 'empty_string',
+                        'status' => 'UNKNOWN',
+                        'info'   => "Empty String\ninvalid status ''"
+                    }
+                    ],
             },
             warnings => [
-                "Result false-not_exists does not have a status",
+                "Result false-not_exists has missing status",
                 "Result false-undef has undefined status",
                 "Result false-empty_string has invalid status ''",
             ],
@@ -279,6 +293,7 @@ is_deeply(
                         'results' => [
                             {   'id'     => 'zero',
                                 'status' => 0,
+                                'info'   => "invalid status '0'",
                             },
                             { 'status' => 'OK' }
                         ],
@@ -288,6 +303,7 @@ is_deeply(
                         'results' => [
                             {   'id'     => 'one',
                                 'status' => 1,
+                                'info'   => "invalid status '1'",
                             },
                             { 'status' => 'OK' }
                         ],
@@ -297,6 +313,7 @@ is_deeply(
                         'results' => [
                             {   'id'     => 'two',
                                 'status' => 2,
+                                'info'   => "invalid status '2'",
                             },
                             { 'status' => 'OK' }
                         ],
@@ -306,6 +323,7 @@ is_deeply(
                         'results' => [
                             {   'id'     => 'three',
                                 'status' => 3,
+                                'info'   => "invalid status '3'",
                             },
                             { 'status' => 'OK' }
                         ],
@@ -330,15 +348,22 @@ is_deeply(
             expect => {
                 'id'      => 'invalid',
                 'status'  => 'UNKNOWN',
+                'info' => 'missing status',
                 'results' => [
-                    { 'id' => 'four',  'status' => 4 },
-                    { 'id' => 'other', 'status' => 'OTHER' }
-                ],
+                    {   'id'     => 'four',
+                        'status' => 4,
+                        'info'   => "invalid status '4'",
+                    },
+                    {   'id'     => 'other',
+                        'status' => 'OTHER',
+                        'info'   => "invalid status 'OTHER'",
+                    }
+                    ],
             },
             warnings => [
                 "Result invalid-four has invalid status '4'",
                 "Result invalid-other has invalid status 'OTHER'",
-                "Result invalid does not have a status",
+                "Result invalid has missing status",
             ],
         },
         {
@@ -351,13 +376,14 @@ is_deeply(
                     { status => '33' },
                 ], },
             expect => {
-                'id'     => 'by_index',
-                'status' => 'UNKNOWN',
+                'id'      => 'by_index',
+                'status'  => 'UNKNOWN',
+                'info'    => 'missing status',
                 'results' => [
-                    { 'status' => '00' },
-                    { 'status' => '11' },
-                    { 'status' => '22' },
-                    { 'status' => '33' }
+                    { "status" => "00", "info" => "invalid status '00'" },
+                    { "status" => "11", "info" => "invalid status '11'" },
+                    { "status" => "22", "info" => "invalid status '22'" },
+                    { "status" => "33", "info" => "invalid status '33'" }
                 ],
             },
             warnings => [
@@ -365,7 +391,7 @@ is_deeply(
                 "Result by_index-1 has invalid status '11'",
                 "Result by_index-2 has invalid status '22'",
                 "Result by_index-3 has invalid status '33'",
-                "Result by_index does not have a status",
+                "Result by_index has missing status",
             ],
         },
     );
@@ -450,14 +476,14 @@ is_deeply(
     }
 
     is_deeply( \@warnings, [ map { "Result $_ $at$nl" }
-        "fine-7 has an undefined id",
-        "fine- has an invalid id ''",
-        "fine-Not_OK_With_Capital_Letters has an invalid id 'Not_OK_With_Capital_Letters'",
-        "fine-Not_ok_with_capitols_like_Washington has an invalid id 'Not_ok_with_capitols_like_Washington'",
-        "fine-not-ok-with-dashes has an invalid id 'not-ok-with-dashes'",
-        "fine-not ok with spaces has an invalid id 'not ok with spaces'",
-        "fine-not/ok/with/slashes has an invalid id 'not/ok/with/slashes'",
-        q{fine-not_ok_"quoted" has an invalid id 'not_ok_"quoted"'},
+        "fine-7 has undefined id",
+        "fine- has invalid id ''",
+        "fine-Not_OK_With_Capital_Letters has invalid id 'Not_OK_With_Capital_Letters'",
+        "fine-Not_ok_with_capitols_like_Washington has invalid id 'Not_ok_with_capitols_like_Washington'",
+        "fine-not-ok-with-dashes has invalid id 'not-ok-with-dashes'",
+        "fine-not ok with spaces has invalid id 'not ok with spaces'",
+        "fine-not/ok/with/slashes has invalid id 'not/ok/with/slashes'",
+        q{fine-not_ok_"quoted" has invalid id 'not_ok_"quoted"'},
     ], "Got warnings about invalid IDs" ) || diag explain \@warnings;
 }
 
@@ -473,7 +499,7 @@ is_deeply(
             My::HealthCheck::Diagnostic->summarize({ status => 'OK', timestamp => $timestamp });
         }
         my $at = "at " . __FILE__ . " line " . ( __LINE__ - 2 );
-        my @expect = ("Result 0 has an invalid timestamp '$timestamp' $at$nl")
+        my @expect = ("Result 0 has invalid timestamp '$timestamp' $at$nl")
             x ( $num_warnings || 0 );
 
         is_deeply \@warnings, \@expect, "$message: Expected warnings";

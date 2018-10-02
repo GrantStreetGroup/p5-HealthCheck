@@ -325,11 +325,12 @@ sub _summarize {
     # Removing the // here will force "worse" status inheritance
     $result->{status} //= $status if $status;
 
+    my @errors;
+
     if ( exists $result->{id} ) {
         my $rid = $result->{id};
         unless ( defined $rid and $rid =~ /^[a-z0-9_]+$/ ) {
-            my $disp_id = defined $rid ? "invalid id '$rid'" : 'undefined id';
-            carp("Result $id has an $disp_id");
+            push @errors, defined $rid ? "invalid id '$rid'" : 'undefined id';
         }
     }
 
@@ -340,22 +341,31 @@ sub _summarize {
                 = defined $ts
                 ? "invalid timestamp '$ts'"
                 : 'undefined timestamp';
-            carp("Result $id has an $disp_timestamp");
+            push @errors, "$disp_timestamp";
         }
     }
 
     if ( not exists $result->{status} ) {
-        carp("Result $id does not have a status");
+        push @errors, "missing status";
     }
     elsif ( not defined $result->{status} ) {
-        carp("Result $id has undefined status");
+        push @errors, "undefined status";
     }
     elsif ( not exists $statuses{ uc( $result->{status} // '' ) } ) {
-        carp("Result $id has invalid status '$result->{status}'");
+        push @errors, "invalid status '$result->{status}'";
     }
 
     $result->{status} = 'UNKNOWN'
         unless defined $result->{status} and length $result->{status};
+
+    if (@errors) {
+        carp("Result $id has $_") for @errors;
+        $result->{status} = 'UNKNOWN'
+            if $result->{status}
+            and $statuses{ $result->{status} }
+            and $statuses{UNKNOWN} > $statuses{ $result->{status} };
+        $result->{info} = join "\n", grep {$_} $result->{info}, @errors;
+    }
 
     return $result;
 }

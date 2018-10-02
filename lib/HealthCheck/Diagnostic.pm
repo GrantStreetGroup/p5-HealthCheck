@@ -273,15 +273,15 @@ sub _summarize {
     my @forward = qw( OK WARNING CRITICAL UNKNOWN );
 
     # The order of preference to inherit from a child.
-    my %statuses = (
-        UNKNOWN  => -1,
-        OK       => 0,
-        WARNING  => 1,
-        CRITICAL => 2,
-    );
+    my %statuses = do { my $i = 1; map { $_ => $i++ } qw(
+        UNKNOWN
+        OK
+        WARNING
+        CRITICAL
+    ) };
 
-    my $status = $result->{status};
-    $status = '' unless exists $statuses{ $status || '' };
+    my $status = uc( $result->{status} || '' );
+    $status = '' unless exists $statuses{$status};
 
     my @results;
     if ( exists $result->{results} ) {
@@ -310,17 +310,19 @@ sub _summarize {
         my $r = $results[$i];
         $self->_summarize( $r, "$id-" . ( $r->{id} // $i ) );
 
-        my $s = $r->{status};
-        $s = $forward[$s] if defined $s and $s =~ /^[0-3]$/;
+        if ( defined( my $s = $r->{status} ) ) {
+            $s = uc $s;
+            $s = $forward[$s] if $s =~ /^[0-3]$/;
 
-        $status = uc($s)
-            if $s
-            and exists $statuses{ uc $s }
-            and $statuses{ uc $s } > $statuses{ $status || 'UNKNOWN' };
+            $status = $s
+                if exists $statuses{$s}
+                and $statuses{$s} > ( $statuses{$status} // 1 );
+        }
     }
 
     # If we've found a valid status in our children,
     # use that if we don't have our own.
+    # Removing the // here will force "worse" status inheritance
     $result->{status} //= $status if $status;
 
     if ( exists $result->{id} ) {

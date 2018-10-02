@@ -4,7 +4,7 @@ use Test::More;
 
 use HealthCheck::Diagnostic;
 
-my $nl = $] >= 5.016 ? ".\n" : "\n";
+my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
 
 { note "Object check with no run method defined";
     local $@;
@@ -192,11 +192,11 @@ use warnings 'once';
             foo    => 'ignored',
         );
     };
-    my $at = sprintf "at %s line %d.", __FILE__, __LINE__ - 8;
+    my $at = sprintf "at %s line %d", __FILE__, __LINE__ - 8;
 
     is_deeply $got, {@results},
         "Didn't copy anything that was returned in the result already";
-    is_deeply \@warnings, ["Result 0 has an undefined id $at\n"],
+    is_deeply \@warnings, ["Result 0 has an undefined id $at$nl"],
         "Warned about undef id in result";
 }
 

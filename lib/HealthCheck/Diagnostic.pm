@@ -274,8 +274,8 @@ sub _summarize {
 
     # The order of preference to inherit from a child.
     my %statuses = do { my $i = 1; map { $_ => $i++ } qw(
-        UNKNOWN
         OK
+        UNKNOWN
         WARNING
         CRITICAL
     ) };

@@ -302,7 +302,7 @@ is_deeply(
                         ],
                     },
                     {   'id'      => 'unknown',
-                        'status'  => 'OK',
+                        'status'  => 'UNKNOWN',
                         'results' => [
                             {   'id'     => 'three',
                                 'status' => 3,

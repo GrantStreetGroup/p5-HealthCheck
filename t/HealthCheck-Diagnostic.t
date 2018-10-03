@@ -240,75 +240,84 @@ is_deeply(
             ],
         },
         {
-            # The extra empty results keep it from combining results
+            # The extra results keep it from combining results
             # so we can see what it actually does
             have => {
                 id        => 'by_number',
-                'results' => [ {
-                        id      => 'ok',
-                        results => [ { id => 'zero', status => 0 }, {} ]
+                'results' => [
+                    {   id      => 'ok',
+                        results => [
+                            { id     => 'zero', status => 0 },
+                            { status => 'OK' }
+                        ]
                     },
-                    {
-                        id      => 'warning',
-                        results => [ { id => 'one', status => 1 }, {} ]
+                    {   id      => 'warning',
+                        results => [
+                            { id     => 'one', status => 1 },
+                            { status => 'OK' }
+                        ]
                     },
-                    {
-                        id      => 'critical',
-                        results => [ { id => 'two', status => 2 }, {} ]
+                    {   id      => 'critical',
+                        results => [
+                            { id     => 'two', status => 2 },
+                            { status => 'OK' }
+                        ]
                     },
-                    {
-                        id      => 'unknown',
-                        results => [ { id => 'three', status => 3 }, {} ]
+                    {   id      => 'unknown',
+                        results => [
+                            { id     => 'three', status => 3 },
+                            { status => 'OK' }
+                        ]
                     },
                 ]
             },
             expect => {
                 id      => 'by_number',
                 status  => 'CRITICAL',
-                results => [ {
-                        'id'      => 'ok',
+                results => [
+                    {   'id'      => 'ok',
                         'status'  => 'OK',
                         'results' => [
-                            { 'id'     => 'zero', 'status' => 0 },
-                            { 'status' => 'UNKNOWN' }
+                            {   'id'     => 'zero',
+                                'status' => 0,
+                            },
+                            { 'status' => 'OK' }
                         ],
                     },
-                    {
-                        'id'      => 'warning',
+                    {   'id'      => 'warning',
                         'status'  => 'WARNING',
                         'results' => [
-                            { 'id'     => 'one', 'status' => 1 },
-                            { 'status' => 'UNKNOWN' }
+                            {   'id'     => 'one',
+                                'status' => 1,
+                            },
+                            { 'status' => 'OK' }
                         ],
                     },
-                    {
-                        'id'      => 'critical',
+                    {   'id'      => 'critical',
                         'status'  => 'CRITICAL',
                         'results' => [
-                            { 'id'     => 'two', 'status' => 2 },
-                            { 'status' => 'UNKNOWN' }
+                            {   'id'     => 'two',
+                                'status' => 2,
+                            },
+                            { 'status' => 'OK' }
                         ],
                     },
-                    {
-                        'id'      => 'unknown',
-                        'status'  => 'UNKNOWN',
+                    {   'id'      => 'unknown',
+                        'status'  => 'OK',
                         'results' => [
-                            { 'id'     => 'three', 'status' => 3 },
-                            { 'status' => 'UNKNOWN' }
+                            {   'id'     => 'three',
+                                'status' => 3,
+                            },
+                            { 'status' => 'OK' }
                         ],
                     },
                 ],
             },
             warnings => [
                 "Result by_number-ok-zero has invalid status '0'",
-                "Result by_number-ok-1 does not have a status",
                 "Result by_number-warning-one has invalid status '1'",
-                "Result by_number-warning-1 does not have a status",
                 "Result by_number-critical-two has invalid status '2'",
-                "Result by_number-critical-1 does not have a status",
                 "Result by_number-unknown-three has invalid status '3'",
-                "Result by_number-unknown-1 does not have a status",
-                "Result by_number-unknown does not have a status",
             ],
         },
         {

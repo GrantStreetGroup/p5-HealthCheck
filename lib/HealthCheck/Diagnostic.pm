@@ -270,10 +270,10 @@ sub _summarize {
 
     # Indexes correspond to Nagios Plugin Return Codes
     # https://assets.nagios.com/downloads/nagioscore/docs/nagioscore/3/en/pluginapi.html
-    my @forward = qw( OK WARNING CRITICAL UNKNOWN );
+    state $forward = [ qw( OK WARNING CRITICAL UNKNOWN ) ];
 
     # The order of preference to inherit from a child.
-    my %statuses = do { my $i = 1; map { $_ => $i++ } qw(
+    state $statuses = { map { state $i = 1; $_ => $i++ } qw(
         OK
         UNKNOWN
         WARNING
@@ -281,7 +281,7 @@ sub _summarize {
     ) };
 
     my $status = uc( $result->{status} || '' );
-    $status = '' unless exists $statuses{$status};
+    $status = '' unless exists $statuses->{$status};
 
     my @results;
     if ( exists $result->{results} ) {
@@ -312,11 +312,11 @@ sub _summarize {
 
         if ( defined( my $s = $r->{status} ) ) {
             $s = uc $s;
-            $s = $forward[$s] if $s =~ /^[0-3]$/;
+            $s = $forward->[$s] if $s =~ /^[0-3]$/;
 
             $status = $s
-                if exists $statuses{$s}
-                and $statuses{$s} > ( $statuses{$status} // 0 );
+                if exists $statuses->{$s}
+                and $statuses->{$s} > ( $statuses->{$status} // 0 );
         }
     }
 
@@ -351,7 +351,7 @@ sub _summarize {
     elsif ( not defined $result->{status} ) {
         push @errors, "undefined status";
     }
-    elsif ( not exists $statuses{ uc( $result->{status} // '' ) } ) {
+    elsif ( not exists $statuses->{ uc( $result->{status} // '' ) } ) {
         push @errors, "invalid status '$result->{status}'";
     }
 
@@ -362,8 +362,8 @@ sub _summarize {
         carp("Result $id has $_") for @errors;
         $result->{status} = 'UNKNOWN'
             if $result->{status}
-            and $statuses{ $result->{status} }
-            and $statuses{UNKNOWN} > $statuses{ $result->{status} };
+            and $statuses->{ $result->{status} }
+            and $statuses->{UNKNOWN} > $statuses->{ $result->{status} };
         $result->{info} = join "\n", grep {$_} $result->{info}, @errors;
     }
 

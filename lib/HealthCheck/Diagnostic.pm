@@ -224,7 +224,8 @@ values.
 
 Used by L</check>.
 
-Carps a warning if validation fails on several keys.
+Carps a warning if validation fails on several keys, and sets the
+C<status> from C<OK> to C<UNKNOWN>.
 
 =over
 

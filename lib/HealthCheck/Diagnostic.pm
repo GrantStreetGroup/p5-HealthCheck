@@ -224,7 +224,8 @@ values.
 
 Used by L</check>.
 
-Carps a warning if validation fails on several keys.
+Carps a warning if validation fails on several keys, and sets the
+C<status> from C<OK> to C<UNKNOWN>.
 
 =over
 
@@ -270,18 +271,19 @@ sub _summarize {
 
     # Indexes correspond to Nagios Plugin Return Codes
     # https://assets.nagios.com/downloads/nagioscore/docs/nagioscore/3/en/pluginapi.html
-    my @forward = qw( OK WARNING CRITICAL UNKNOWN );
+    state $forward = [ qw( OK WARNING CRITICAL UNKNOWN ) ];
 
-    # The order of preference to inherit from a child.
-    my %statuses = (
-        UNKNOWN  => -1,
-        OK       => 0,
-        WARNING  => 1,
-        CRITICAL => 2,
-    );
+    # The order of preference to inherit from a child. The highest priority
+    # has the lowest number.
+    state $statuses = { map { state $i = 1; $_ => $i++ } qw(
+        CRITICAL
+        WARNING
+        UNKNOWN
+        OK
+    ) };
 
-    my $status = $result->{status};
-    $status = '' unless exists $statuses{ $status || '' };
+    my $status = uc( $result->{status} || '' );
+    $status = '' unless exists $statuses->{$status};
 
     my @results;
     if ( exists $result->{results} ) {
@@ -310,24 +312,27 @@ sub _summarize {
         my $r = $results[$i];
         $self->_summarize( $r, "$id-" . ( $r->{id} // $i ) );
 
-        my $s = $r->{status};
-        $s = $forward[$s] if defined $s and $s =~ /^[0-3]$/;
+        if ( defined( my $s = $r->{status} ) ) {
+            $s = uc $s;
+            $s = $forward->[$s] if $s =~ /^[0-3]$/;
 
-        $status = uc($s)
-            if $s
-            and exists $statuses{ uc $s }
-            and $statuses{ uc $s } > $statuses{ $status || 'UNKNOWN' };
+            $status = $s
+                if exists $statuses->{$s}
+                and $statuses->{$s} < ( $statuses->{$status} // 5 );
+        }
     }
 
     # If we've found a valid status in our children,
     # use that if we don't have our own.
+    # Removing the // here will force "worse" status inheritance
     $result->{status} //= $status if $status;
+
+    my @errors;
 
     if ( exists $result->{id} ) {
         my $rid = $result->{id};
         unless ( defined $rid and $rid =~ /^[a-z0-9_]+$/ ) {
-            my $disp_id = defined $rid ? "invalid id '$rid'" : 'undefined id';
-            carp("Result $id has an $disp_id");
+            push @errors, defined $rid ? "invalid id '$rid'" : 'undefined id';
         }
     }
 
@@ -338,22 +343,31 @@ sub _summarize {
                 = defined $ts
                 ? "invalid timestamp '$ts'"
                 : 'undefined timestamp';
-            carp("Result $id has an $disp_timestamp");
+            push @errors, "$disp_timestamp";
         }
     }
 
     if ( not exists $result->{status} ) {
-        carp("Result $id does not have a status");
+        push @errors, "missing status";
     }
     elsif ( not defined $result->{status} ) {
-        carp("Result $id has undefined status");
+        push @errors, "undefined status";
     }
-    elsif ( not exists $statuses{ uc( $result->{status} // '' ) } ) {
-        carp("Result $id has invalid status '$result->{status}'");
+    elsif ( not exists $statuses->{ uc( $result->{status} // '' ) } ) {
+        push @errors, "invalid status '$result->{status}'";
     }
 
     $result->{status} = 'UNKNOWN'
         unless defined $result->{status} and length $result->{status};
+
+    if (@errors) {
+        carp("Result $id has $_") for @errors;
+        $result->{status} = 'UNKNOWN'
+            if $result->{status}
+            and $statuses->{ $result->{status} }
+            and $statuses->{UNKNOWN} < $statuses->{ $result->{status} };
+        $result->{info} = join "\n", grep {$_} $result->{info}, @errors;
+    }
 
     return $result;
 }

@@ -272,12 +272,13 @@ sub _summarize {
     # https://assets.nagios.com/downloads/nagioscore/docs/nagioscore/3/en/pluginapi.html
     state $forward = [ qw( OK WARNING CRITICAL UNKNOWN ) ];
 
-    # The order of preference to inherit from a child.
+    # The order of preference to inherit from a child. The highest priority
+    # has the lowest number.
     state $statuses = { map { state $i = 1; $_ => $i++ } qw(
-        OK
-        UNKNOWN
-        WARNING
         CRITICAL
+        WARNING
+        UNKNOWN
+        OK
     ) };
 
     my $status = uc( $result->{status} || '' );
@@ -316,7 +317,7 @@ sub _summarize {
 
             $status = $s
                 if exists $statuses->{$s}
-                and $statuses->{$s} > ( $statuses->{$status} // 0 );
+                and $statuses->{$s} < ( $statuses->{$status} // 5 );
         }
     }
 
@@ -363,7 +364,7 @@ sub _summarize {
         $result->{status} = 'UNKNOWN'
             if $result->{status}
             and $statuses->{ $result->{status} }
-            and $statuses->{UNKNOWN} > $statuses->{ $result->{status} };
+            and $statuses->{UNKNOWN} < $statuses->{ $result->{status} };
         $result->{info} = join "\n", grep {$_} $result->{info}, @errors;
     }
 

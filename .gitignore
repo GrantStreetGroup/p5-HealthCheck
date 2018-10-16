@@ -16,6 +16,6 @@ pm_to_blib
 *~
 cpanfile.snapshot
 local/
-GSG-*-v*/
-GSG-*-v*.tar.*
+HealthCheck-v*/
+HealthCheck-v*.tar.*
 .perl-version

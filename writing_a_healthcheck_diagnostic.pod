@@ -16,8 +16,105 @@ encouraged.
 The only requirement for a diagnostic is that it is callable
 and that it returns a hashref (or sometimes even an even-sized list) that
 includes a C<status> key and optionally some other optional keys.
-(Now, that's not entirely true as if you return a C<results> arrayref instead,
-the normal checker will summarize those results into the appropriate status)
+
+=head2 Diagnostic methods
+
+The L<HealthCheck::Diagnostic> module provides a base for writing your
+own checks with validation of the results as a promise to conform
+to the standard.
+When you want to create your own diagnostic, you have the option to
+override a few different methods.
+
+=head3 new
+
+This is your basic constructor method.
+It just returns the blessed object, so you may want to add default
+values on the diagnostic instance that is returned.
+
+Set a default label on the diagnostic instance:
+
+    sub new {
+        my ($class, %params) = @_;
+
+        return $class->SUPER::new(
+            label => 'default_label',
+            %params,
+        );
+    }
+
+You may also want to allow the constructor to take in a hashref, or
+an even-sized list of parameters:
+
+    my %params = @params == 1 && ( ref $params[0] || '' ) eq 'HASH'
+        ? %{ $params[0] } : @params;
+
+=head3 run
+
+This is your basic check. It runs the test, and returns the result hashref.
+You would most-likely be overriding this method with your actual test
+logic.
+
+One special note to keep in mind is that any exceptions get trapped in
+the C<info> key of the result hashref.
+
+=head3 summarize
+
+This performs some extra logic if you want to have sub-tests in your
+diagnostic.
+This method merely squashes those C<status> values in the sub-tests and
+validates the result hashref for errors.
+
+Here is an example of a C<run> override that utilizes summarize:
+
+    sub run {
+        my $test1 = {
+            status => 'OK',
+            info   => 'The test passed',
+        };
+        my $test2 = {
+            status => 'CRITICAL',
+            info   => 'The test failed',
+        };
+
+        return {
+            info    => 'Uses summarize',
+            results => [ $test1, $test2 ],
+        };
+    }
+
+This is what the result hashref would look like when the check is run:
+
+    {   status  => 'CRITICAL',
+        info    => 'Uses summarize',
+        results => [ $test1, $test2 ],
+    }
+
+Note that C<summarize> is called during the C<check> method, so you may
+want to take that into account if you are overriding the C<check> method
+in any way.
+
+=head3 check
+
+This is what gets called by the HealthCheck.
+It ends up calling C<run> and then C<summarize> on the result hashref.
+You would want to override this method if you want to roll out your
+own custom approach, likely for validation and summarization.
+
+One special note to keep in mind is that exceptions do not get trapped
+in here at all, as opposed to C<run>.
+
+You may want to require certain parameters to be passed to the check.
+This type of validation is done as follows:
+
+    sub check {
+        my ($self, %params ) = @_;
+
+        croak( "Missing required `file` key" )
+            unless $params{file};
+
+        my $res = $self->SUPER::check( %params );
+        return $res;
+    }
 
 =head2 How can I make my check testable and sharable?
 
@@ -184,29 +281,7 @@ the GSG
 L<Status API|https://support.grantstreet.com/wiki/display/DEVOPS/Status+API>
 specification, as this example shows.
 
-This Diagnostic should probably use the below C<check> override that
-validates that it is not being called as a class method.
-
-
 =head2 Useful Patterns
-
-=head3 Adding default attributes to your Diagnostics
-
-The call to C<new> can take either a hashref or an even-sized-list of
-parameters.
-
-    sub new {
-        my ($class, @params) = @_;
-
-        # Allow either a hashref or even-sized list of params
-        my %params = @params == 1 && ( ref $params[0] || '' ) eq 'HASH'
-            ? %{ $params[0] } : @params;
-
-        return $class->SUPER::new(
-            label => 'default_label',
-            %params
-        );
-    }
 
 =head3 Require calling check on an instance
 
@@ -220,23 +295,3 @@ instance.
         return $self->SUPER::check(@args);
     }
 
-
-=head3 Adding validation of check parameters
-
-You may want to require certain parameters to be passed to the
-C<check> to allow it to work as a class method, or just to override
-the values that may have been added to the instance.
-
-    sub check {
-        my ( $self, %params ) = @_;
-
-        my $api = $params{api};
-        $api ||= $self->{api} if ref $self;
-        croak("Valid 'api' is required") unless $api and do {
-            local $@; eval { local $SIG{__DIE__}; $api->can('ping') } };
-
-        my $res = $self->SUPER::check( %params, api => $api );
-        delete $res->{api};    # don't include the object in the result
-
-        return $res;
-    }

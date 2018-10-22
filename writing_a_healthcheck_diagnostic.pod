@@ -62,50 +62,6 @@ With the above set of checks registered, the results look something like:
         ],
     }
 
-=head3 Diagnostic Parameters
-
-As a side note, I need to mention what your C<run> method will get
-as arguments when it is called by the checker.
-To make your diagnostics more flexible, several things are passed as
-arguments when the check is run.
-When a check is registered as either a
-class or object based check its C<check> method is called, which makes
-the first argument the class or object,
-however a coderef does not get that first argument.
-The rest of the arguments are whatever is passed to the C<check> method,
-which should be assumed to be an even-sized list of arguments.
-
-For example, if you call the above check with an even-sized list:
-
-    $health_check->check( foo => 'bar' );
-
-Or even a hashref, which is expanded and passed as an even-sized list:
-
-    $health_check->check( { foo => 'bar' } );
-
-Then the class based check gets the package name as a string,
-plus the parameters passed to check.
-
-    @_ = ( "HealthCheck::Diagnostic::Simple", "foo", "bar" );
-
-While the object based check is similarly called with the object
-and those same parameters.
-
-    @_ = ( $diagnostic, "foo", "bar" );
-
-Although a coderef check is only called with the parameters passed to
-the check:
-
-    $health_check->register( sub { ... } );
-    # in that sub, @_ = ( "foo", "bar" )
-
-The one parameter that, while still passed to the diagnostic,
-actually affects which diagnostics get called is the C<tags> argument.
-
-    $health_check->check( tags => ['simple'] );
-
-will only call the C<$diagnostic> check, as it has a C<'simple'> tag.
-
 =head3 A more in depth example
 
 In this example, we're going to add a check for a physical system

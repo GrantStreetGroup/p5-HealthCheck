@@ -15,7 +15,7 @@ L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+C
 format.
 
 In lay-man's terms, this just mans that a diagnostic must return a hashref
-soncisting of the C<status> key and some other optional keys.
+consisting of the C<status> key and some other optional keys.
 You may want to add an C<info> message to the diagnostic if you want to
 give it a more human-readable description of the test.
 
@@ -51,43 +51,49 @@ Set a default label on the diagnostic instance:
         );
     }
 
-You may also want to allow the constructor to take in a hashref, or
+We may also want to allow the constructor to take in a hashref, or
 an even-sized list of parameters:
 
+    my ($class, @params) = @_;
     my %params = @params == 1 && ( ref $params[0] || '' ) eq 'HASH'
         ? %{ $params[0] } : @params;
 
 =head3 run
 
-This is your basic check. It runs the test, and returns the result hashref.
+This is where you would normally implement the check.
+It runs the test and returns the result hashref.
 You would most-likely be overriding this method with your actual test
 logic.
 
-One special note to keep in mind is that any exceptions get trapped in
-the C<info> key of the result hashref.
+    sub run { return { status => 'OK' } }
+
+See the note in L</check> regarding throwing exceptions in this method.
 
 =head3 summarize
 
-This performs some extra logic if you want to have sub-tests in your
+This performs some extra logic if we want to have sub-tests in our
 diagnostic.
-This method merely squashes those C<status> values in the sub-tests and
-validates the result hashref for errors.
+This method squashes those C<status> values in the sub-tests and
+validates the result hashref meets the specification in the Standard.
+If there are values in the result that aren't valid for some reason,
+an C<OK> status will get converted to C<UNKNOWN> and the validation
+error will get appended to the C<info>.
 
-Here is an example of a C<run> override that utilizes summarize:
+Here is an example of a C<run> override that uses summarize:
 
     sub run {
-        my $test1 = {
+        my $result1 = {
             status => 'OK',
             info   => 'The test passed',
         };
-        my $test2 = {
+        my $result2 = {
             status => 'CRITICAL',
             info   => 'The test failed',
         };
 
         return {
             info    => 'Uses summarize',
-            results => [ $test1, $test2 ],
+            results => [ $result1, $result2 ],
         };
     }
 
@@ -95,22 +101,19 @@ This is what the result hashref would look like when the check is run:
 
     {   status  => 'CRITICAL',
         info    => 'Uses summarize',
-        results => [ $test1, $test2 ],
+        results => [ $result1, $result2 ],
     }
 
-Note that C<summarize> is called during the C<check> method, so you may
-want to take that into account if you are overriding the C<check> method
-in any way.
+Note that C<summarize> is called by the default C<check> method,
+so you will want to take that into account
+if you are overriding the C<check> method in any way.
 
 =head3 check
 
-This is what gets called by the HealthCheck.
-It ends up calling C<run> and then C<summarize> on the result hashref.
+This is the default method that will be called by the HealthCheck.
+It ends up calling L</run> and then L</summarize> on the result hashref.
 You would want to override this method if you want to roll out your
 own custom approach, likely for validation and summarization.
-
-One special note to keep in mind is that exceptions do not get trapped
-in here at all, as opposed to C<run>.
 
 You may want to require certain parameters to be passed to the check.
 This type of validation is done as follows:
@@ -125,10 +128,18 @@ This type of validation is done as follows:
         return $res;
     }
 
+One special note to keep in mind is this method will trap any exceptions
+during the call to L</run> and will set the C<status> to C<CRITICAL>
+and put the exception message into the C<info> key of the result hashref.
+
 =head2 Writing class checks and instance checks
 
 Now that you know about the methods, you may want to know about the
 different ways to create your diagnostic.
+
+In general, it's not terribly difficult most of the time to support both
+instance and class based checks so consider using the L</Multi checks> pattern
+if e can.
 
 =head3 Instance checks
 
@@ -136,6 +147,10 @@ Instance checks are diagnostics that are designed to be used as an
 instance.
 This implementation requires you to instantiate the diagnostic with
 the parameters being used in the check.
+
+When used on an instance the L</summarize> method will additionally
+copy the C<id>, C<label>, and C<tags> from the instance to the C<result>
+that is returned if they aren't already included.
 
 Here is an example instance-only implementation module:
 
@@ -177,22 +192,30 @@ need to be an instance.
 In that case, we pay special attention to the parameters that are
 passed to the C<check> and C<run> methods.
 
+As a benefit to our users, we probably want to disable calling C<new>
+or even better, consider supporting L</Multi checks>.
+
 Here is an example of the same diagnostic listed above, but uses a
 class implementation:
 
     package HealthCheck::Diagnostic::TempCheck;
     use parent 'HealthCheck::Diagnostic';
 
+    # Don't allow instantiating an instance
+    use Carp;
+    sub new { croak(__PACKAGE__ . " does not support being an instance.") }
+
     sub check_temp { ... } # Returns a hashref using $_[1] as temp value.
 
     sub run {
-        my ($self, %params) = @_;
-        return $self->check_temp( $params{temperature} );
+        my ($class, %params) = @_;
+        return $class->check_temp( $params{temperature} );
     }
 
     1;
 
-Any parameters passed to C<check> are passed to C<run> by default.
+Any parameters passed to the HealthCheck instance's C<check>
+are passed the diagnostic's C<check> which in turn passed it to C<run>.
 Here is an example using that module in a health-check:
 
     $health_check->register( 'HealthCheck::Diagnostic::TempCheck' );
@@ -200,9 +223,9 @@ Here is an example using that module in a health-check:
 
 =head3 Multi checks
 
-In some cases where we would want to allow for both an instance and class
-check, we can do that.
-We just need to define our diagnostic so that it can handle that:
+It is entirely possible to allow both instance and class checks
+in the same module.
+We just need to design our diagnostic so that it can handle that:
 
     package HealthCheck::Diagnostic::TempCheck;
     use parent 'HealthCheck::Diagnostic';
@@ -212,8 +235,8 @@ We just need to define our diagnostic so that it can handle that:
     sub check {
         my ($self, %params) = @_;
         if ( ref $self ) {
-            # Copy over instance values as arguments to the `run` method.
-            params{$_} = $self->{$_}
+            # Default all instance values as arguments to the `run` method.
+            $params{$_} = $self->{$_}
                 foreach grep { ! defined $params{$_} } keys %$self;
         }
         return $self->SUPER::check( %params );
@@ -229,29 +252,62 @@ We just need to define our diagnostic so that it can handle that:
 Then, we can use the diagnostic as either an instance or class in
 our health-check:
 
-    # Register a class check.
+    # Register a class check that uses all the defaults.
     $health_check->register( 'HealthCheck::Diagnostic::TempCheck' );
 
     # Register an instance check.
-    $diagnostic = HealthCheck::Diagnostic::WeatherCheck->new(
-        now => 'sunny',
+    $diagnostic = HealthCheck::Diagnostic::TempCheck->new(
+        id          => 'cheese_temp',
+        label       => 'Cool enough to age cheese',
+        temperature => 12.5,  # gets overridden by the value passed to check
     );
     $health_check->register( $diagnostic );
 
-    # Run the checks.
-    $health_check->check( temperature => 100 );
+    # Run the checks, assuming check_temp claims a current temp of 95 degrees
+    $health_check->check();
 
-Here are the results from that last C<check> call:
+Here are the results from that last C<check> call,
+if the class based check had defined a default temperature limit
+things may have gone better,
+but as it is we don't know what limit you might have wanted to compare.
+The second result overrides that status though as
 
     {   status  => 'CRITICAL',
         results => [
             {
+                status => 'UNKNOWN',
+                info   => 'The temperature limit is unknown',
+            },
+            {
+                id     => 'cheese_temp',
+                label  => 'Cool enough to age cheese',
                 status => 'CRITICAL',
                 info   => 'The temperature is too hot',
             },
+        ],
+    }
+
+Now we override the temperature, which is passed to both diagnostics:
+
+    # Run the checks, assuming check_temp claims a current temp of 95 degrees
+    $health_check->check( temperature => 100 );
+
+Here are the results from that last C<check> call,
+as you notice because we passed in a new temperature limit,
+it overrode the limit and says 95 degrees is jut fine for aging cheese,
+but we know that's a much better temp for melting it onto noodles!
+
+    {   status  => 'OK',
+        results => [
             {
                 status => 'OK',
-                info   => 'The weather is sunny',
+                info   => 'The temperature is just right',
+            },
+            {
+                id     => 'cheese_temp',
+                label  => 'Cool enough to age cheese',
+                status => 'OK',
+                info   => 'The temperature is just right',
             },
         ],
     }

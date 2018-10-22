@@ -116,6 +116,137 @@ This type of validation is done as follows:
         return $res;
     }
 
+=head2 Writing class checks and instance checks
+
+Now that you know about the methods, you may want to know about the
+different ways to create your diagnostic.
+
+=head3 Instance checks
+
+Instance checks are diagnostics that are designed to be used as an
+instance.
+This implementation requires you to instantiate the diagnostic with
+the parameters being used in the check.
+
+Here is an example instance-only implementation module:
+
+    package HealthCheck::Diagnostic::TempCheck;
+    use base 'HealthCheck::Diagnostic';
+
+    sub check_temp { .. } # Returns a hashref using $_[1] as temp value.
+
+    sub run {
+        my ($self, %params) = @_;
+        return $self->check_temp( $self->{temperature} );
+    };
+
+    1;
+
+Here is an example using that module:
+
+    my $diagnostic = HealthCheck::Diagnostic::TempCheck->new(
+        temperature => '22',
+    );
+    $health_check->register( $diagnostic );
+    $health_check->check;
+
+If we want to create an instance-only implementation, we may want
+to override the C<check> method in our diagnostic module to put that
+restriction in-place:
+
+    sub check {
+        my ($self, @args ) = @_;
+        croak( "check cannot be called as a class method" )
+            unless ref $self;
+        return $self->SUPER::check( @args );
+    }
+
+=head3 Class checks
+
+Class check diagnostics are designed so that the diagnostic does not
+need to be an instance.
+In that case, we pay special attention to the parameters that are
+passed to the C<check> and C<run> methods.
+
+Here is an example of the same diagnostic listed above, but uses a
+class implementation:
+
+    package HealthCheck::Diagnostic::TempCheck;
+    use base 'HealthCheck::Diagnostic';
+
+    sub check_temp { ... } # Returns a hashref using $_[1] as temp value.
+
+    sub run {
+        my ($self, %params) = @_;
+        return $self->check_temp( $params{temperature} );
+    }
+
+    1;
+
+Any parameters passed to C<check> are passed to C<run> by default.
+Here is an example using that module in a health-check:
+
+    $health_check->register( 'HealthCheck::Diagnostic::TempCheck' );
+    $health_check->check( temperature => 20 );
+
+=head3 Multi checks
+
+In some cases where we would want to allow for both an instance and class
+check, we can do that.
+We just need to define our diagnostic so that it can handle that:
+
+    package HealthCheck::Diagnostic::TempCheck;
+    use base 'HealthCheck::Diagnostic';
+
+    sub check_temp { ... } # Returns a hashref using $_[1] as temp value.
+
+    sub check {
+        my ($self, %params) = @_;
+        if ( ref $self ) {
+            # Copy over instance values as arguments to the `run` method.
+            params{$_} = $self->{$_}
+                foreach grep { ! defined $params{$_} } keys %$self;
+        }
+        return $self->SUPER::check( %params );
+    }
+
+    sub run {
+        my ($self, %params) = @_;
+        return $self->check_temp( $params{temperature} );
+    }
+
+    1;
+
+Then, we can use the diagnostic as either an instance or class in
+our health-check:
+
+    # Register a class check.
+    $health_check->register( 'HealthCheck::Diagnostic::TempCheck' );
+
+    # Register an instance check.
+    $diagnostic = HealthCheck::Diagnostic::WeatherCheck->new(
+        now => 'sunny',
+    );
+    $health_check->register( $diagnostic );
+
+    # Run the checks.
+    $health_check->check( temperature => 100 );
+
+Here are the results from that last C<check> call:
+
+    {   status  => 'CRITICAL',
+        results => [
+            {
+                status => 'CRITICAL',
+                info   => 'The temperature is too hot',
+            },
+            {
+                status => 'OK',
+                info   => 'The weather is sunny',
+            },
+        ],
+    }
+
 =head2 How can I make my check testable and sharable?
 
 The L<HealthCheck::Diagnostic> module provides a base for writing your
@@ -280,18 +411,3 @@ although the output is not well defined, one use is to be compatible with
 the GSG
 L<Status API|https://support.grantstreet.com/wiki/display/DEVOPS/Status+API>
 specification, as this example shows.
-
-=head2 Useful Patterns
-
-=head3 Require calling check on an instance
-
-Sometimes your C<check> won't work as a class method and in that case,
-it's fairly easy to add validation that the check method was called on an
-instance.
-
-    sub check {
-        my ( $self, @args ) = @_;
-        croak("check cannot be called as a class method") unless ref $self;
-        return $self->SUPER::check(@args);
-    }
-

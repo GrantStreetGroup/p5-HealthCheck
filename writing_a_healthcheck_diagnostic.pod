@@ -1,21 +1,30 @@
 =head1 Writing a HealthCheck::Diagnostic
 
-So, you need to check the health of something and are here to find out how.
-Well, lets see what we can do to help you figure that out.
+This document is here to help you write a diagnostic.
 
 =head2 What is a HealthCheck Diagnostic?
 
-A health check diagnostic is a subroutine that returns a hashref in the
+A health check diagnostic is a specific task that is focused in one
+area of an application's health.
+This can mean multiple things, like checking if a file exists or the
+app can connect to a database.
+
+In technical terms, a health check diagnostic is a subroutine that
+returns a hashref in the
 L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>
 format.
-While this can be as simple as C<< sub { status => 'OK' } >>,
-you're probably here because you want to be able to share a check with other
-people, or write tests for the check, which are both great ideas that should be
-encouraged.
 
-The only requirement for a diagnostic is that it is callable
-and that it returns a hashref (or sometimes even an even-sized list) that
-includes a C<status> key and optionally some other optional keys.
+In lay-man's terms, this just mans that a diagnostic must return a hashref
+soncisting of the C<status> key and some other optional keys.
+You may want to add an C<info> message to the diagnostic if you want to
+give it a more human-readable description of the test.
+
+Here is an example of a result hashref that could be returned by
+a diagnostic:
+
+    {   status => "OK",
+        info   => "Connecting to the database",
+    }
 
 =head2 Diagnostic methods
 
@@ -247,50 +256,7 @@ Here are the results from that last C<check> call:
         ],
     }
 
-=head2 How can I make my check testable and sharable?
-
-The L<HealthCheck::Diagnostic> module provides a base for writing your
-own checks with validation of the results as a promise to conform
-to the standard.
-
-=head3 A simple diagnostic
-
-The basics of a check that does the same thing as above is as simple as:
-
-    package HealthCheck::Diagnostic::Simple;
-    use parent 'HealthCheck::Diagnostic';
-    sub run { return { status => 'OK' } }
-    1;
-
-You can then use that as a check and have that return value validated:
-
-    # As a class
-    $health_check->register( 'HealthCheck::Diagnostic::Simple' );
-
-    # As an object
-    my $diagnostic = HealthCheck::Diagnostic::Simple->new(
-        id    => "a_check",
-        label => "A Simple Check",
-        tags  => ['simple'],
-    );
-    $health_check->register($diagnostic);
-
-When using it as an object, the parent class will automatically copy a
-select set of the attributes from the C<$diagnostic> object to the result.
-With the above set of checks registered, the results look something like:
-
-    {   status  => "OK",
-        results => [
-            { status => "OK" },
-            {   id     => "a_check",
-                label  => "A Simple Check",
-                status => "OK",
-                tags   => ["simple"]
-            },
-        ],
-    }
-
-=head3 A more in depth example
+=head2 More in-depth example
 
 In this example, we're going to add a check for a physical system
 to make it easier to visualize,
@@ -394,20 +360,3 @@ The implementation for that check might look something like this:
     }
 
     1;
-
-
-Going through this we can pick out some important features this check
-implements,
-like inheriting from L<HealthCheck::Diagnostic>
-and defining a C<run> method.
-
-Some things to notice about the C<run> method are that it relies on other
-helper methods to make its decision about the state of the service and that
-it returns a hashref with several keys in addition to the C<status>.
-The L<info> is a human readable, short description of the result,
-something that tells a person what's going on.
-The C<data> key is a "machine readable output" of the check,
-although the output is not well defined, one use is to be compatible with
-the GSG
-L<Status API|https://support.grantstreet.com/wiki/display/DEVOPS/Status+API>
-specification, as this example shows.

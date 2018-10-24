@@ -152,11 +152,11 @@ Here is an example instance-only implementation module:
     package HealthCheck::Diagnostic::TempCheck;
     use parent 'HealthCheck::Diagnostic';
 
-    sub check_temp { .. } # Returns a hashref using $_[1] as temp value.
+    sub check_temp { .. } # Returns a hashref using $_[1] as temp limit.
 
     sub run {
         my ($self, %params) = @_;
-        return $self->check_temp( $self->{temperature} );
+        return $self->check_temp( $self->{temp_limit} );
     };
 
     1;
@@ -164,7 +164,7 @@ Here is an example instance-only implementation module:
 Here is an example using that module:
 
     my $diagnostic = HealthCheck::Diagnostic::TempCheck->new(
-        temperature => '22',
+        temp_limit => '22',
     );
     $health_check->register( $diagnostic );
     $health_check->check;
@@ -198,11 +198,11 @@ Here is an example of the same diagnostic listed above as a class check:
     use Carp;
     sub new { croak(__PACKAGE__ . " does not support being an instance.") }
 
-    sub check_temp { ... } # Returns a hashref using $_[1] as temp value.
+    sub check_temp { ... } # Returns a hashref using $_[1] as temp limit.
 
     sub run {
         my ($class, %params) = @_;
-        return $class->check_temp( $params{temperature} );
+        return $class->check_temp( $params{temp_limit} );
     }
 
     1;
@@ -212,7 +212,7 @@ are passed the diagnostic's L</check>, which are then passed to L</run>.
 Here is an example using that module in a health-check:
 
     $health_check->register( 'HealthCheck::Diagnostic::TempCheck' );
-    $health_check->check( temperature => 20 );
+    $health_check->check( temp_limit => 65 );
 
 =head3 Multi checks
 
@@ -223,7 +223,7 @@ The diagnostic just needs to be designed so that it can handle that:
     package HealthCheck::Diagnostic::TempCheck;
     use parent 'HealthCheck::Diagnostic';
 
-    sub check_temp { ... } # Returns a hashref using $_[1] as temp value.
+    sub check_temp { ... } # Returns a hashref using $_[1] as temp limit.
 
     sub check {
         my ($self, %params) = @_;
@@ -237,7 +237,7 @@ The diagnostic just needs to be designed so that it can handle that:
 
     sub run {
         my ($self, %params) = @_;
-        return $self->check_temp( $params{temperature} );
+        return $self->check_temp( $params{temp_limit} );
     }
 
     1;
@@ -250,20 +250,18 @@ a health-check:
 
     # Register an instance check.
     $diagnostic = HealthCheck::Diagnostic::TempCheck->new(
-        id          => 'cheese_temp',
-        label       => 'Cool enough to age cheese',
-        temperature => 12.5,  # gets overridden by the value passed to check
+        id          => 'night_temp',
+        label       => 'Temperature is cool enough to sleep in',
+        temp_limit  => 70, # Overridden by the value passed to `check`
     );
     $health_check->register( $diagnostic );
 
-    # Run the checks, assuming check_temp claims a current temp of 95 degrees
+    # Run the checks, pretending the current temperature is 95-degrees.
     $health_check->check();
 
-Here are the results from that last C<check> call,
-if the class based check had defined a default temperature limit
-things may have gone better,
-but as it is we don't know what limit you might have wanted to compare.
-The second result overrides that status though as
+The results from that last C<check> are displayed below.
+If the class-based check defined a default temperature limit,
+the C<UNKNOWN> sub-result C<status> may have changed.
 
     {   status  => 'CRITICAL',
         results => [
@@ -272,8 +270,8 @@ The second result overrides that status though as
                 info   => 'The temperature limit is unknown',
             },
             {
-                id     => 'cheese_temp',
-                label  => 'Cool enough to age cheese',
+                id     => 'night_temp',
+                label  => 'Temperature is cool enough to sleep in',
                 status => 'CRITICAL',
                 info   => 'The temperature is too hot',
             },
@@ -282,13 +280,12 @@ The second result overrides that status though as
 
 Now, run the check again, by overriding the default temperature limit:
 
-    # Run the checks, assuming check_temp claims a current temp of 95 degrees
-    $health_check->check( temperature => 100 );
+    # Run the checks, pretending the current temperature is 72-degrees.
+    $health_check->check( temp_limit => 77 );
 
-Here are the results from that last C<check> call,
-as you notice because we passed in a new temperature limit,
-it overrode the limit and says 95 degrees is jut fine for aging cheese,
-but we know that's a much better temp for melting it onto noodles!
+The results from the C<check> call are displayed below.
+By overriding the temperature limit in both results to 77-degrees,
+the tests now pass.
 
     {   status  => 'OK',
         results => [
@@ -297,8 +294,8 @@ but we know that's a much better temp for melting it onto noodles!
                 info   => 'The temperature is just right',
             },
             {
-                id     => 'cheese_temp',
-                label  => 'Cool enough to age cheese',
+                id     => 'night_temp',
+                label  => 'Temperature is cool enough to sleep in',
                 status => 'OK',
                 info   => 'The temperature is just right',
             },

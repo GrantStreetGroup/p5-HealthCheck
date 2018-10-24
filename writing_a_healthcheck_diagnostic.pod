@@ -1,6 +1,6 @@
 =head1 Writing a HealthCheck::Diagnostic
 
-This document is here to help you write a diagnostic.
+This document is here to help in write a diagnostic.
 
 =head2 What is a HealthCheck Diagnostic?
 
@@ -14,10 +14,10 @@ returns a hashref in the
 L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>
 format.
 
-In lay-man's terms, this just mans that a diagnostic must return a hashref
-consisting of the C<status> key and some other optional keys.
-You may want to add an C<info> message to the diagnostic if you want to
-give it a more human-readable description of the test.
+Put simply, this just means that a diagnostic must return a hashref
+consisting of the C<status> key and other optional keys.
+Adding an C<info> message to the diagnostic gives it a more
+human-readable description of the test.
 
 Here is an example of a result hashref that could be returned by
 a diagnostic:
@@ -28,17 +28,16 @@ a diagnostic:
 
 =head2 Diagnostic methods
 
-The L<HealthCheck::Diagnostic> module provides a base for writing your
-own checks with validation of the results as a promise to conform
+The L<HealthCheck::Diagnostic> module provides a base for writing
+custom checks with validation of the results as a promise to conform
 to the standard.
-When you want to create your own diagnostic, you have the option to
-override a few different methods.
+When creating a diagnostic, a few different methods can be overridden.
 
 =head3 new
 
-This is your basic constructor method.
-It just returns the blessed object, so you may want to add default
-values on the diagnostic instance that is returned.
+This is the basic constructor method.
+It just returns the blessed object, so overriding this method allows
+for default values in the instance.
 
 Set a default label on the diagnostic instance:
 
@@ -51,8 +50,8 @@ Set a default label on the diagnostic instance:
         );
     }
 
-We may also want to allow the constructor to take in a hashref, or
-an even-sized list of parameters:
+The constructor can also be overridden to take in a hashref or an
+even-sized list of parameters:
 
     my ($class, @params) = @_;
     my %params = @params == 1 && ( ref $params[0] || '' ) eq 'HASH'
@@ -60,10 +59,9 @@ an even-sized list of parameters:
 
 =head3 run
 
-This is where you would normally implement the check.
+This is where the check is normally implemented.
 It runs the test and returns the result hashref.
-You would most-likely be overriding this method with your actual test
-logic.
+This method would most-likely be overridden with the actual test logic.
 
     sub run { return { status => 'OK' } }
 
@@ -71,15 +69,14 @@ See the note in L</check> regarding throwing exceptions in this method.
 
 =head3 summarize
 
-This performs some extra logic if we want to have sub-tests in our
-diagnostic.
+This performs extra logic if the diagnostic has sub-tests.
 This method squashes those C<status> values in the sub-tests and
-validates the result hashref meets the specification in the Standard.
-If there are values in the result that aren't valid for some reason,
-an C<OK> status will get converted to C<UNKNOWN> and the validation
-error will get appended to the C<info>.
+validates that the result hashref meets the specification in the Standard.
+When some values in the result are invalid in any way,
+an C<OK> status is converted to C<UNKNOWN> and the validation
+error is appended to the C<info>.
 
-Here is an example of a C<run> override that uses summarize:
+Here is an example of a L</run> override that uses summarize:
 
     sub run {
         my $result1 = {
@@ -97,25 +94,24 @@ Here is an example of a C<run> override that uses summarize:
         };
     }
 
-This is what the result hashref would look like when the check is run:
+This is what the result hashref after L</check> is called on the diagnostic:
 
     {   status  => 'CRITICAL',
         info    => 'Uses summarize',
         results => [ $result1, $result2 ],
     }
 
-Note that C<summarize> is called by the default C<check> method,
-so you will want to take that into account
-if you are overriding the C<check> method in any way.
+Note that C<summarize> is called by the default L</check> method,
+so special treatment must be made if overridding L</check> in any way.
 
 =head3 check
 
-This is the default method that will be called by the HealthCheck.
+This is the default method that is called by the HealthCheck.
 It ends up calling L</run> and then L</summarize> on the result hashref.
-You would want to override this method if you want to roll out your
-own custom approach, likely for validation and summarization.
+If the diagnostic needs to handle validation and summarization, then
+C<check> would most-likely be overridden to handle these two operations.
 
-You may want to require certain parameters to be passed to the check.
+Parameter requirements can be enforced on the diagnostic.
 This type of validation is done as follows:
 
     sub check {
@@ -134,23 +130,22 @@ and put the exception message into the C<info> key of the result hashref.
 
 =head2 Writing class checks and instance checks
 
-Now that you know about the methods, you may want to know about the
-different ways to create your diagnostic.
+There are two different ways to create a diagnostic.
 
-In general, it's not terribly difficult most of the time to support both
-instance and class based checks so consider using the L</Multi checks> pattern
-if e can.
+In general, it is not usually difficult in supporting both instance-based
+and class-based checks, so consider using the L</Multi checks> pattern
+wherever possible.
 
 =head3 Instance checks
 
 Instance checks are diagnostics that are designed to be used as an
 instance.
-This implementation requires you to instantiate the diagnostic with
-the parameters being used in the check.
+This implementation requires an instance with the instance values being
+used in the check.
 
-When used on an instance the L</summarize> method will additionally
-copy the C<id>, C<label>, and C<tags> from the instance to the C<result>
-that is returned if they aren't already included.
+When used on an instance, L</summarize> additionally copies the
+C<id>, C<label>, and C<tags> from the instance to the returned C<result>
+if not already included.
 
 Here is an example instance-only implementation module:
 
@@ -174,9 +169,8 @@ Here is an example using that module:
     $health_check->register( $diagnostic );
     $health_check->check;
 
-If we want to create an instance-only implementation, we may want
-to override the C<check> method in our diagnostic module to put that
-restriction in-place:
+It might be beneficial to override the L</check> method in the
+instance-only diagnostic module for that restriction:
 
     sub check {
         my ($self, @args ) = @_;
@@ -189,14 +183,13 @@ restriction in-place:
 
 Class check diagnostics are designed so that the diagnostic does not
 need to be an instance.
-In that case, we pay special attention to the parameters that are
-passed to the C<check> and C<run> methods.
+Class diagnostics pay special attention to the parameters that are
+passed to the L</check> and L</run> methods.
 
-As a benefit to our users, we probably want to disable calling C<new>
-or even better, consider supporting L</Multi checks>.
+It might be worthwhile to disable calling L</new> for instance-only
+diagnostics.
 
-Here is an example of the same diagnostic listed above, but uses a
-class implementation:
+Here is an example of the same diagnostic listed above as a class check:
 
     package HealthCheck::Diagnostic::TempCheck;
     use parent 'HealthCheck::Diagnostic';
@@ -214,8 +207,8 @@ class implementation:
 
     1;
 
-Any parameters passed to the HealthCheck instance's C<check>
-are passed the diagnostic's C<check> which in turn passed it to C<run>.
+All parameters passed to the HealthCheck instance's C<check>
+are passed the diagnostic's L</check>, which are then passed to L</run>.
 Here is an example using that module in a health-check:
 
     $health_check->register( 'HealthCheck::Diagnostic::TempCheck' );
@@ -223,9 +216,9 @@ Here is an example using that module in a health-check:
 
 =head3 Multi checks
 
-It is entirely possible to allow both instance and class checks
+It is possible, and ideal, to allow both instance and class checks
 in the same module.
-We just need to design our diagnostic so that it can handle that:
+The diagnostic just needs to be designed so that it can handle that:
 
     package HealthCheck::Diagnostic::TempCheck;
     use parent 'HealthCheck::Diagnostic';
@@ -249,8 +242,8 @@ We just need to design our diagnostic so that it can handle that:
 
     1;
 
-Then, we can use the diagnostic as either an instance or class in
-our health-check:
+Then, the diagnostic can be used as either an instance or class in
+a health-check:
 
     # Register a class check that uses all the defaults.
     $health_check->register( 'HealthCheck::Diagnostic::TempCheck' );
@@ -287,7 +280,7 @@ The second result overrides that status though as
         ],
     }
 
-Now we override the temperature, which is passed to both diagnostics:
+Now, run the check again, by overriding the default temperature limit:
 
     # Run the checks, assuming check_temp claims a current temp of 95 degrees
     $health_check->check( temperature => 100 );
@@ -314,18 +307,15 @@ but we know that's a much better temp for melting it onto noodles!
 
 =head2 More in-depth example
 
-In this example, we're going to add a check for a physical system
-to make it easier to visualize,
-a sensor system that can tell us when we should open or close the window.
-What we're going to imagine is that we have three sensors:
-inside, outside, and the window status.
-The inside sensor can tell us the current temperature,
-while the outside sensor can tell us both temperature and whether it is raining.
-The window sensor is just a boolean check for whether the window is open.
+This example shows a check for a physical system.
+This sensor system can alert when to open or close the window.
+There are three sensors: inside, outside, and the window status.
+The inside sensor is used to get the indoor temperature.
+The outside sensor is used to get the outdoor temperature and weather.
+The window sensor is used to check if the window is open.
 
-
-We might initialize a diagnostic with several different sensors
-that let it decide whether our window is in a good position.
+The diagnostic is initialized with several different sensors and the
+ideal temperatures.
 
     my $diagnostic = HealthCheck::Diagnostic::WindowStatus->new(
         inside  => My::Sensor::Inside->new,
@@ -347,7 +337,7 @@ The implementation for that check might look something like this:
     sub run {
         my ($self) = @_;
 
-        # Gather some data that we can return to be used for graphing
+        # Gather some data that can be returned for graphing
         my @data = (
             {   label => "Inside Temperature",
                 value => $self->{inside}->temp,
@@ -374,7 +364,7 @@ The implementation for that check might look something like this:
             return \%res;
         }
 
-        # Otherwise, see if the state we want matches the current state.
+        # Otherwise, see if the desired state matches the current state.
         my $desired_state = $self->desired_state;
         if ( $desired_state ne $self->current_state ) {
             $res{status} = "WARNING";

@@ -4,7 +4,7 @@ use Test::More;
 
 use HealthCheck::Diagnostic;
 
-my $nl = $] >= 5.016 ? ".\n" : "\n";
+my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
 
 { note "Object check with no run method defined";
     local $@;
@@ -192,11 +192,11 @@ use warnings 'once';
             foo    => 'ignored',
         );
     };
-    my $at = sprintf "at %s line %d.", __FILE__, __LINE__ - 8;
+    my $at = sprintf "at %s line %d", __FILE__, __LINE__ - 8;
 
-    is_deeply $got, {@results},
+    is_deeply $got, { @results, status => 'UNKNOWN', info => 'undefined id' },
         "Didn't copy anything that was returned in the result already";
-    is_deeply \@warnings, ["Result 0 has an undefined id $at\n"],
+    is_deeply \@warnings, ["Result 0 has undefined id $at$nl"],
         "Warned about undef id in result";
 }
 
@@ -217,98 +217,124 @@ is_deeply(
         {
             have => {
                 id      => 'false',
+                info    => 'False Info',
                 results => [
-                    { id => 'not_exists' },
-                    { id => 'undef', status => undef },
-                    { id => 'empty_string', status => '' },
+                    { id => 'not_exists', info => 'Not Exists' },
+                    { id => 'undef',      info => 'Undef', status => undef },
+                    {   id     => 'empty_string',
+                        info   => 'Empty String',
+                        status => ''
+                    },
                 ]
             },
             expect => {
                 'id'      => 'false',
                 'status'  => 'UNKNOWN',
+                'info'    => 'False Info',
                 'results' => [
-                    { 'id' => 'not_exists',   'status' => 'UNKNOWN' },
-                    { 'id' => 'undef',        'status' => 'UNKNOWN' },
-                    { 'id' => 'empty_string', 'status' => 'UNKNOWN' }
-                ],
+                    {   'id'     => 'not_exists',
+                        'status' => 'UNKNOWN',
+                        'info'   => "Not Exists\nmissing status"
+                    },
+                    {   'id'     => 'undef',
+                        'status' => 'UNKNOWN',
+                        'info'   => "Undef\nundefined status"
+                    },
+                    {   'id'     => 'empty_string',
+                        'status' => 'UNKNOWN',
+                        'info'   => "Empty String\ninvalid status ''"
+                    }
+                    ],
             },
             warnings => [
-                "Result false-not_exists does not have a status",
+                "Result false-not_exists has missing status",
                 "Result false-undef has undefined status",
                 "Result false-empty_string has invalid status ''",
-                "Result false does not have a status",
             ],
         },
         {
-            # The extra empty results keep it from combining results
+            # The extra results keep it from combining results
             # so we can see what it actually does
             have => {
                 id        => 'by_number',
-                'results' => [ {
-                        id      => 'ok',
-                        results => [ { id => 'zero', status => 0 }, {} ]
+                'results' => [
+                    {   id      => 'ok',
+                        results => [
+                            { id     => 'zero', status => 0 },
+                            { status => 'OK' }
+                        ]
                     },
-                    {
-                        id      => 'warning',
-                        results => [ { id => 'one', status => 1 }, {} ]
+                    {   id      => 'warning',
+                        results => [
+                            { id     => 'one', status => 1 },
+                            { status => 'OK' }
+                        ]
                     },
-                    {
-                        id      => 'critical',
-                        results => [ { id => 'two', status => 2 }, {} ]
+                    {   id      => 'critical',
+                        results => [
+                            { id     => 'two', status => 2 },
+                            { status => 'OK' }
+                        ]
                     },
-                    {
-                        id      => 'unknown',
-                        results => [ { id => 'three', status => 3 }, {} ]
+                    {   id      => 'unknown',
+                        results => [
+                            { id     => 'three', status => 3 },
+                            { status => 'OK' }
+                        ]
                     },
                 ]
             },
             expect => {
                 id      => 'by_number',
                 status  => 'CRITICAL',
-                results => [ {
-                        'id'      => 'ok',
+                results => [
+                    {   'id'      => 'ok',
                         'status'  => 'OK',
                         'results' => [
-                            { 'id'     => 'zero', 'status' => 0 },
-                            { 'status' => 'UNKNOWN' }
+                            {   'id'     => 'zero',
+                                'status' => 0,
+                                'info'   => "invalid status '0'",
+                            },
+                            { 'status' => 'OK' }
                         ],
                     },
-                    {
-                        'id'      => 'warning',
+                    {   'id'      => 'warning',
                         'status'  => 'WARNING',
                         'results' => [
-                            { 'id'     => 'one', 'status' => 1 },
-                            { 'status' => 'UNKNOWN' }
+                            {   'id'     => 'one',
+                                'status' => 1,
+                                'info'   => "invalid status '1'",
+                            },
+                            { 'status' => 'OK' }
                         ],
                     },
-                    {
-                        'id'      => 'critical',
+                    {   'id'      => 'critical',
                         'status'  => 'CRITICAL',
                         'results' => [
-                            { 'id'     => 'two', 'status' => 2 },
-                            { 'status' => 'UNKNOWN' }
+                            {   'id'     => 'two',
+                                'status' => 2,
+                                'info'   => "invalid status '2'",
+                            },
+                            { 'status' => 'OK' }
                         ],
                     },
-                    {
-                        'id'      => 'unknown',
+                    {   'id'      => 'unknown',
                         'status'  => 'UNKNOWN',
                         'results' => [
-                            { 'id'     => 'three', 'status' => 3 },
-                            { 'status' => 'UNKNOWN' }
+                            {   'id'     => 'three',
+                                'status' => 3,
+                                'info'   => "invalid status '3'",
+                            },
+                            { 'status' => 'OK' }
                         ],
                     },
                 ],
             },
             warnings => [
                 "Result by_number-ok-zero has invalid status '0'",
-                "Result by_number-ok-1 does not have a status",
                 "Result by_number-warning-one has invalid status '1'",
-                "Result by_number-warning-1 does not have a status",
                 "Result by_number-critical-two has invalid status '2'",
-                "Result by_number-critical-1 does not have a status",
                 "Result by_number-unknown-three has invalid status '3'",
-                "Result by_number-unknown-1 does not have a status",
-                "Result by_number-unknown does not have a status",
             ],
         },
         {
@@ -322,15 +348,22 @@ is_deeply(
             expect => {
                 'id'      => 'invalid',
                 'status'  => 'UNKNOWN',
+                'info' => 'missing status',
                 'results' => [
-                    { 'id' => 'four',  'status' => 4 },
-                    { 'id' => 'other', 'status' => 'OTHER' }
-                ],
+                    {   'id'     => 'four',
+                        'status' => 4,
+                        'info'   => "invalid status '4'",
+                    },
+                    {   'id'     => 'other',
+                        'status' => 'OTHER',
+                        'info'   => "invalid status 'OTHER'",
+                    }
+                    ],
             },
             warnings => [
                 "Result invalid-four has invalid status '4'",
                 "Result invalid-other has invalid status 'OTHER'",
-                "Result invalid does not have a status",
+                "Result invalid has missing status",
             ],
         },
         {
@@ -343,13 +376,14 @@ is_deeply(
                     { status => '33' },
                 ], },
             expect => {
-                'id'     => 'by_index',
-                'status' => 'UNKNOWN',
+                'id'      => 'by_index',
+                'status'  => 'UNKNOWN',
+                'info'    => 'missing status',
                 'results' => [
-                    { 'status' => '00' },
-                    { 'status' => '11' },
-                    { 'status' => '22' },
-                    { 'status' => '33' }
+                    { "status" => "00", "info" => "invalid status '00'" },
+                    { "status" => "11", "info" => "invalid status '11'" },
+                    { "status" => "22", "info" => "invalid status '22'" },
+                    { "status" => "33", "info" => "invalid status '33'" }
                 ],
             },
             warnings => [
@@ -357,7 +391,7 @@ is_deeply(
                 "Result by_index-1 has invalid status '11'",
                 "Result by_index-2 has invalid status '22'",
                 "Result by_index-3 has invalid status '33'",
-                "Result by_index does not have a status",
+                "Result by_index has missing status",
             ],
         },
     );
@@ -442,14 +476,14 @@ is_deeply(
     }
 
     is_deeply( \@warnings, [ map { "Result $_ $at$nl" }
-        "fine-7 has an undefined id",
-        "fine- has an invalid id ''",
-        "fine-Not_OK_With_Capital_Letters has an invalid id 'Not_OK_With_Capital_Letters'",
-        "fine-Not_ok_with_capitols_like_Washington has an invalid id 'Not_ok_with_capitols_like_Washington'",
-        "fine-not-ok-with-dashes has an invalid id 'not-ok-with-dashes'",
-        "fine-not ok with spaces has an invalid id 'not ok with spaces'",
-        "fine-not/ok/with/slashes has an invalid id 'not/ok/with/slashes'",
-        q{fine-not_ok_"quoted" has an invalid id 'not_ok_"quoted"'},
+        "fine-7 has undefined id",
+        "fine- has invalid id ''",
+        "fine-Not_OK_With_Capital_Letters has invalid id 'Not_OK_With_Capital_Letters'",
+        "fine-Not_ok_with_capitols_like_Washington has invalid id 'Not_ok_with_capitols_like_Washington'",
+        "fine-not-ok-with-dashes has invalid id 'not-ok-with-dashes'",
+        "fine-not ok with spaces has invalid id 'not ok with spaces'",
+        "fine-not/ok/with/slashes has invalid id 'not/ok/with/slashes'",
+        q{fine-not_ok_"quoted" has invalid id 'not_ok_"quoted"'},
     ], "Got warnings about invalid IDs" ) || diag explain \@warnings;
 }
 
@@ -465,7 +499,7 @@ is_deeply(
             My::HealthCheck::Diagnostic->summarize({ status => 'OK', timestamp => $timestamp });
         }
         my $at = "at " . __FILE__ . " line " . ( __LINE__ - 2 );
-        my @expect = ("Result 0 has an invalid timestamp '$timestamp' $at$nl")
+        my @expect = ("Result 0 has invalid timestamp '$timestamp' $at$nl")
             x ( $num_warnings || 0 );
 
         is_deeply \@warnings, \@expect, "$message: Expected warnings";

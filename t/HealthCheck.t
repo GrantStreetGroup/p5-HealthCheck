@@ -343,6 +343,7 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
             'id'      => 'main',
             'tags'    => ['default'],
             'status'  => 'UNKNOWN',
+            'info'    => 'missing status',
             'results' => [],
             },
             "Check with 'hard' tags runs no checks, so no results";

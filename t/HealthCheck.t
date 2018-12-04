@@ -350,6 +350,27 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
     }
 }
 
+{ note "Check that throws exception";
+    my $check = sub { die "ded\n" };
+    my $hc = HealthCheck->new( checks => [ $check, sub { status => 'OK' } ] );
+    is_deeply
+        $hc->check,
+        {
+            results => [
+                {
+                    info => "ded\n",
+                    status => "CRITICAL"
+                },
+                {
+                    status => "OK"
+                },
+            ],
+            status => "CRITICAL",
+        },
+        "Able to report mixed success/failures"
+    ;
+}
+
 done_testing;
 
 sub check       { +{ status => 'OK', label => 'Local' } }

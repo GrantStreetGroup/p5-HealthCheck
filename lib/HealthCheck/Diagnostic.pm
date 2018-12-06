@@ -86,7 +86,7 @@ might be overridden.
 =head2 new
 
     my $diagnostic
-        = HealthCheck::Diagnostic::Sample->new( id => 'my-diagnostic' );
+        = HealthCheck::Diagnostic::Sample->new( id => 'my_diagnostic' );
 
 =head3 ATTRIBUTES
 

@@ -358,7 +358,21 @@ sub run {
         my %c = %{$_};
         my $i = delete $c{invocant} || '';
         my $m = delete $c{check}    || '';
-        my @r = $i ? $i->$m( %c, %params ) : $m->( %c, %params );
+
+        my @r;
+        # Exceptions will probably not contain child health check's metadata,
+        # as HealthCheck::Diagnostic->summarize would normally populate these
+        # and was not called.
+        # This could theoretically be a pain for prodsupport. If we find this
+        # happening frequently, we should reassess our decision not to attempt
+        # to call summarize here
+        # (for fear of exception-catching magic and rabbitholes).
+        {
+            local $@;
+            @r = eval { local $SIG{__DIE__};
+                $i ? $i->$m( %c, %params ) : $m->( %c, %params ) };
+            @r = { status => 'CRITICAL', info => $@ } if $@ and not @r;
+        }
 
           @r == 1 && ref $r[0] eq 'HASH' ? $r[0]
         : @r % 2 == 0 ? {@r}

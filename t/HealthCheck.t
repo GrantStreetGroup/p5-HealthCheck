@@ -264,6 +264,17 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
     is_deeply $run->(qw( invocant )), ['Invocant Can'],
         "Pick up tags if invocant can('tags')";
 
+    is_deeply $run->('!hard'), [
+        'Cheap and Easy',
+        'Default',
+        'Fast and Cheap',
+        'Fast and Easy',
+        'Invocant Can'
+    ], "Not-hard tag runs not-hard checks";
+
+    is_deeply $run->(qw(fast !easy)), [ 'Fast and Cheap' ],
+        "Specyfying fast but not easy runs non-easy fast tests";
+
     is_deeply $run->(qw( nonexistent )), [],
         "Specifying a tag that doesn't match means no checks are run";
 }

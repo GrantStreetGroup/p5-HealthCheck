@@ -11,6 +11,7 @@ use warnings;
 use Carp;
 
 use Hash::Util::FieldHash;
+use List::Util qw(any);
 
 # Create a place outside of $self to store the checks
 # as everything in the self hashref will be copied into
@@ -60,7 +61,8 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
     my @tags = $checker->tags;    # returns fast, cheap
 
     my %result = %{ $checker->check( tags => ['cheap'] ) };
-
+       # OR run the opposite checks
+       %result = %{ $checker->check( tags => ['!cheap'] ) };
 
     # A checker class or object just needs to have either
     # a check method, which is used by default,
@@ -395,7 +397,7 @@ but are not intended for general use.
 
 =head2 should_run
 
-    my $bool = $checker->should_run( \%check, tags => ['banana'] );
+    my $bool = $checker->should_run( \%check, tags => ['apple', '!banana'] );
 
 Takes a check definition hash and paramters and returns true
 if the check should be run.
@@ -407,7 +409,10 @@ Supported parameters:
 
 =item tags
 
-If the tags for the check match any of the tags passed in, the check is run.
+Tags can be either "positive" or "negative". A negative tag is indicated by a
+leading C<!>.
+A check is run if its tags match any of the passed in positive tags and none
+of the negative ones.
 If no tags are passed in, all checks will be run.
 
 If the C<invocant> C<can('tags')> and there are no tags in the
@@ -420,26 +425,40 @@ when the object was created.
 
 =cut
 
+sub _has_tags {
+    my ($self, $check, @want_tags) = @_;
+
+    my %have_tags = do {
+        my @t = @{ $check->{tags} || [] };
+
+        @t = $check->{invocant}->tags
+            if not @t
+            and $check->{invocant}
+            and $check->{invocant}->can('tags');
+
+        @t = $self->tags unless @t;
+        map { $_ => 1 } @t;
+    };
+
+    return any { $have_tags{$_} } @want_tags;
+}
+
 sub should_run {
     my ( $self, $check, %params ) = @_;
 
-    if ( my @want_tags = @{ $params{tags} || [] } ) {
-        my %have_tags = do {
-            my @t = @{ $check->{tags} || [] };
-
-            @t = $check->{invocant}->tags
-                if not @t
-                and $check->{invocant}
-                and $check->{invocant}->can('tags');
-
-            @t = $self->tags unless @t;
-            map { $_ => 1 } @t;
-        };
-
-        return unless grep { $have_tags{$_} } @want_tags;
+    my (@positive_tags, @negative_tags);
+    for my $tag ( @{ $params{tags} } ) {
+        if ( $tag =~ /^!/ ) {
+            push @negative_tags, substr($tag, 1);
+        }
+        else {
+            push @positive_tags, $tag;
+        }
     }
 
-    return 1;
+    return 0 if @negative_tags && $self->_has_tags($check, @negative_tags);
+    return 1 unless @positive_tags;
+    return $self->_has_tags($check, @positive_tags);
 }
 
 1;

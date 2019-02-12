@@ -1,26 +1,28 @@
 =head1 Writing a HealthCheck::Diagnostic
 
-This document is here to help in write a diagnostic.
+This document is here to help write a diagnostic.
 
 =head2 What is a HealthCheck Diagnostic?
 
-A health check diagnostic is a specific task that is focused in one
+A health check diagnostic is a specific test that is focused on one
 area of an application's health.
-This can mean multiple things, like checking if a file exists or the
-app can connect to a database.
+This can mean multiple things, like checking if a file exists or if
+the app can connect to a database.
 
 In technical terms, a health check diagnostic is a subroutine that
-returns a hashref in the
+returns a hashref adhering to the
 L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>
-format.
+format. This hashref is commonly known as the C<HealthCheck Result>, or
+C<Result>.
 
-Put simply, this just means that a diagnostic must return a hashref
-consisting of the C<status> key and other optional keys.
-Adding an C<info> message to the diagnostic gives it a more
+Put simply, this just means that a diagnostic must return a C<Result>
+consisting of the C<status> key. Any other key is optional, but can
+help provide additional context. For example,
+adding a message in the C<info> key of the C<Result> gives a more
 human-readable description of the test.
 
-Here is an example of a result hashref that could be returned by
-a diagnostic:
+Thus, a valid C<Result> that could be returned by a diagnostic can
+look something like this:
 
     {   status => "OK",
         info   => "Connecting to the database",
@@ -29,8 +31,9 @@ a diagnostic:
 =head2 Diagnostic methods
 
 The L<HealthCheck::Diagnostic> module provides a base for writing
-custom checks with validation of the results as a promise to conform
-to the standard.
+custom checks with a guarantee that the returned C<Result> conforms
+to the
+L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
 When creating a diagnostic, a few different methods can be overridden.
 
 =head3 new
@@ -42,7 +45,12 @@ for default values in the instance.
 Set a default label on the diagnostic instance:
 
     sub new {
-        my ($class, %params) = @_;
+        my ($class, @params) = @_;
+
+        # Allows your constructor to take a hashref or even-sized list
+        # of parameters similar to the parent.
+        my %params = @params == 1 && ( ref $params[0] || '' ) eq 'HASH'
+            ? %{ $params[0] } : @params;
 
         return $class->SUPER::new(
             label => 'default_label',
@@ -50,8 +58,9 @@ Set a default label on the diagnostic instance:
         );
     }
 
-The constructor can also be overridden to take in a hashref or an
-even-sized list of parameters:
+Note that the constructor is overridden to take in a hashref or an
+even-sized list of parameters. This is the default behavior on the
+original constructor, and should be included in any revisions.
 
     my ($class, @params) = @_;
     my %params = @params == 1 && ( ref $params[0] || '' ) eq 'HASH'
@@ -60,7 +69,7 @@ even-sized list of parameters:
 =head3 run
 
 This is where the check is normally implemented.
-It runs the test and returns the result hashref.
+It runs the test and returns a C<Result>.
 This method would most-likely be overridden with the actual test logic.
 
     sub run { return { status => 'OK' } }
@@ -69,10 +78,12 @@ See the note in L</check> regarding throwing exceptions in this method.
 
 =head3 summarize
 
-This performs extra logic if the diagnostic has sub-tests.
-This method squashes those C<status> values in the sub-tests and
-validates that the result hashref meets the specification in the Standard.
-When some values in the result are invalid in any way,
+This performs extra logic if the diagnostic has a C<Result> of C<Result>s.
+This will squash those C<status> values in the nested structure, and
+validate that all the C<Result>s meet the specification in the
+L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
+
+If any of the values in the C<Result> are invalid,
 an C<OK> status is converted to C<UNKNOWN> and the validation
 error is appended to the C<info>.
 
@@ -94,7 +105,7 @@ Here is an example of a L</run> override that uses summarize:
         };
     }
 
-This is what the result hashref after L</check> is called on the diagnostic:
+Which returns this C<Result> after L</check> is called on the diagnostic:
 
     {   status  => 'CRITICAL',
         info    => 'Uses summarize',
@@ -106,8 +117,9 @@ so special treatment must be made if overridding L</check> in any way.
 
 =head3 check
 
-This is the default method that is called by the HealthCheck.
-It ends up calling L</run> and then L</summarize> on the result hashref.
+This is the default method that is called by the HealthCheck,
+which will L</summarize> the C<Result> returned by L</run>.
+
 If the diagnostic needs to handle validation and summarization, then
 C<check> would most-likely be overridden to handle these two operations.
 
@@ -125,26 +137,26 @@ This type of validation is done as follows:
     }
 
 One special note to keep in mind is this method will trap any exceptions
-during the call to L</run> and will set the C<status> to C<CRITICAL>
-and put the exception message into the C<info> key of the result hashref.
+during the call to L</run>, set the C<status> to C<CRITICAL>
+and put the exception message into the C<info> key of the C<Result>.
 
 =head2 Writing class checks and instance checks
 
 There are two different ways to create a diagnostic.
 
-In general, it is not usually difficult in supporting both instance-based
+In general, it is not difficult in supporting both instance-based
 and class-based checks, so consider using the L</Multi checks> pattern
 wherever possible.
 
 =head3 Instance checks
 
-Instance checks are diagnostics that are designed to be used as an
+Instance checks are diagnostics that are designed to be used on an
 instance.
 This implementation requires an instance with the instance values being
 used in the check.
 
-When used on an instance, L</summarize> additionally copies the
-C<id>, C<label>, and C<tags> from the instance to the returned C<result>
+When used on an instance, L</summarize> will copy the
+C<id>, C<label>, and C<tags> from the instance to the C<Result>
 if not already included.
 
 Here is an example instance-only implementation module:
@@ -186,7 +198,7 @@ need to be an instance.
 Class diagnostics pay special attention to the parameters that are
 passed to the L</check> and L</run> methods.
 
-It might be worthwhile to disable calling L</new> for instance-only
+It might be worthwhile to disable calling L</new> for class-only
 diagnostics.
 
 Here is an example of the same diagnostic listed above as a class check:
@@ -216,7 +228,7 @@ Here is an example using that module in a health-check:
 
 =head3 Multi checks
 
-It is possible, and ideal, to allow both instance and class checks
+It is possible, and ideal, to support both instance and class checks
 in the same module.
 The diagnostic just needs to be designed so that it can handle that:
 
@@ -242,8 +254,8 @@ The diagnostic just needs to be designed so that it can handle that:
 
     1;
 
-Then, the diagnostic can be used as either an instance or class in
-a health-check:
+Then, the diagnostic can be used as either an instance or a class in
+a health check:
 
     # Register a class check that uses all the defaults.
     $health_check->register( 'HealthCheck::Diagnostic::TempCheck' );
@@ -256,7 +268,7 @@ a health-check:
     );
     $health_check->register( $diagnostic );
 
-    # Run the checks, pretending the current temperature is 95-degrees.
+    # Run the checks, pretending the current temperature is 72-degrees.
     $health_check->check();
 
 The results from that last C<check> are displayed below.
@@ -284,8 +296,8 @@ Now, run the check again, by overriding the default temperature limit:
     $health_check->check( temp_limit => 77 );
 
 The results from the C<check> call are displayed below.
-By overriding the temperature limit in both results to 77-degrees,
-the tests now pass.
+Notice that everything is C<OK>, since the C<temp_limit>
+is 77 in both of the registered diagnostics.
 
     {   status  => 'OK',
         results => [

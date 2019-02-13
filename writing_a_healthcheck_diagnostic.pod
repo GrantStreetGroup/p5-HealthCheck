@@ -138,6 +138,10 @@ This type of validation is done as follows:
         return $res;
     }
 
+Without calling the parent L</check> method, it is helpful to instead
+call L</summarize> since the C<id> and C<label> are passed through that
+method.
+
 One special note to keep in mind is this method will trap any exceptions
 during the call to L</run>, set the C<status> to C<CRITICAL>
 and put the exception message into the C<info> key of the C<Result>.

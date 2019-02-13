@@ -60,11 +60,8 @@ Set a default label on the diagnostic instance:
 
 Note that the constructor is overridden to take in a hashref or an
 even-sized list of parameters. This is the default behavior on the
-original constructor, and should be included in any revisions.
-
-    my ($class, @params) = @_;
-    my %params = @params == 1 && ( ref $params[0] || '' ) eq 'HASH'
-        ? %{ $params[0] } : @params;
+original constructor, and should be included in any subclasses for
+consistency.
 
 =head3 run
 
@@ -78,8 +75,8 @@ See the note in L</check> regarding throwing exceptions in this method.
 
 =head3 summarize
 
-This performs extra logic if the diagnostic has a C<Result> of C<Result>s.
-This will squash those C<status> values in the nested structure, and
+This performs extra logic if the diagnostic C<Result> has C<results>.
+This will squash the C<status> values in the nested structure, and
 validate that all the C<Result>s meet the specification in the
 L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
 
@@ -145,11 +142,11 @@ method.
 One special note to keep in mind is this method will trap any exceptions
 during the call to L</run>, set the C<status> to C<CRITICAL>
 and put the exception message into the C<info> key of the C<Result>.
-Despite this feature, C</check> should be designed to return a C<Result>
+Despite this feature, L</run> should be designed to return a C<Result>
 in most cases.
 
-Parameters may need to be generated on-the-fly so a calback is passed
-in. This anonymous function requires proper exception handling.
+Parameters may need to be generated on-the-fly with a passed-in callback.
+This anonymous function requires proper exception handling.
 
     if( ref $params{api} eq 'CODE' ) {
         local $@;

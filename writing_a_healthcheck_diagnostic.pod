@@ -129,8 +129,10 @@ This type of validation is done as follows:
     sub check {
         my ($self, %params ) = @_;
 
-        croak( "Missing required `file` key" )
-            unless $params{file};
+        return {
+            status => 'UNKNOWN',
+            info   => 'Missing required `file` key',
+        } unless $params{file};
 
         my $res = $self->SUPER::check( %params );
         return $res;
@@ -139,6 +141,8 @@ This type of validation is done as follows:
 One special note to keep in mind is this method will trap any exceptions
 during the call to L</run>, set the C<status> to C<CRITICAL>
 and put the exception message into the C<info> key of the C<Result>.
+Despite this feature, C</check> should be designed to return a C<Result>
+in most cases.
 
 =head2 Writing class checks and instance checks
 

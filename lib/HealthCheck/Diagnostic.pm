@@ -166,8 +166,10 @@ in some way.
 
         # Validate any required parameters and that they look right.
         my $required_param = $params{required} || $self->{required};
-        croak("The 'required' parameter is required")
-            unless $required_param and ref $required_param == 'HASH';
+        return {
+            status => 'UNKNOWN',
+            info   => 'The "required" parameter is required',
+        } unless $required_param and ref $required_param == 'HASH';
 
         # Calls $self->run and then passes the result through $self->summarize
         my $res = $self->SUPER::check( %params, required => $required_param );

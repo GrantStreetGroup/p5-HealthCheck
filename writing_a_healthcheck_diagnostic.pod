@@ -148,6 +148,21 @@ and put the exception message into the C<info> key of the C<Result>.
 Despite this feature, C</check> should be designed to return a C<Result>
 in most cases.
 
+Parameters may need to be generated on-the-fly so a calback is passed
+in. This anonymous function requires proper exception handling.
+
+    if( ref $params{api} eq 'CODE' ) {
+        local $@;
+        $params{api} = eval {
+            local $SIG{__DIE__};
+            $params{api}->();
+        };
+        return {
+            status => 'CRITICAL',
+            info   => "Error retrieving api from callback: $@",
+        } if $@;
+    }
+
 =head2 Writing class checks and instance checks
 
 There are two different ways to create a diagnostic.

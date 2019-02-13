@@ -1,125 +1,350 @@
 =head1 Writing a HealthCheck::Diagnostic
 
-So, you need to check the health of something and are here to find out how.
-Well, lets see what we can do to help you figure that out.
+This document is here to help write a diagnostic.
 
 =head2 What is a HealthCheck Diagnostic?
 
-A health check diagnostic is a subroutine that returns a hashref in the
+A health check diagnostic is a specific test that is focused on one
+area of an application's health.
+This can mean multiple things, like checking if a file exists or if
+the app can connect to a database.
+
+In technical terms, a health check diagnostic is a subroutine that
+returns a hashref adhering to the
 L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>
-format.
-While this can be as simple as C<< sub { status => 'OK' } >>,
-you're probably here because you want to be able to share a check with other
-people, or write tests for the check, which are both great ideas that should be
-encouraged.
+format. This hashref is commonly known as the C<HealthCheck Result>, or
+C<Result>.
 
-The only requirement for a diagnostic is that it is callable
-and that it returns a hashref (or sometimes even an even-sized list) that
-includes a C<status> key and optionally some other optional keys.
-(Now, that's not entirely true as if you return a C<results> arrayref instead,
-the normal checker will summarize those results into the appropriate status)
+Put simply, this just means that a diagnostic must return a C<Result>
+consisting of the C<status> key. Any other key is optional, but can
+help provide additional context. For example,
+adding a message in the C<info> key of the C<Result> gives a more
+human-readable description of the test.
 
-=head2 How can I make my check testable and sharable?
+Thus, a valid C<Result> that could be returned by a diagnostic can
+look something like this:
 
-The L<HealthCheck::Diagnostic> module provides a base for writing your
-own checks with validation of the results as a promise to conform
-to the standard.
+    {   status => "OK",
+        info   => "Connecting to the database",
+    }
 
-=head3 A simple diagnostic
+=head2 Diagnostic methods
 
-The basics of a check that does the same thing as above is as simple as:
+The L<HealthCheck::Diagnostic> module provides a base for writing
+custom checks with a guarantee that the returned C<Result> conforms
+to the
+L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
+When creating a diagnostic, a few different methods can be overridden.
 
-    package HealthCheck::Diagnostic::Simple;
-    use parent 'HealthCheck::Diagnostic';
+=head3 new
+
+This is the basic constructor method.
+It just returns the blessed object, so overriding this method allows
+for default values in the instance.
+
+Set a default label on the diagnostic instance:
+
+    sub new {
+        my ($class, @params) = @_;
+
+        # Allows your constructor to take a hashref or even-sized list
+        # of parameters similar to the parent.
+        my %params = @params == 1 && ( ref $params[0] || '' ) eq 'HASH'
+            ? %{ $params[0] } : @params;
+
+        return $class->SUPER::new(
+            label => 'default_label',
+            %params,
+        );
+    }
+
+Note that the constructor is overridden to take in a hashref or an
+even-sized list of parameters. This is the default behavior on the
+original constructor, and should be included in any subclasses for
+consistency.
+
+=head3 run
+
+This is where the check is normally implemented.
+It runs the test and returns a C<Result>.
+This method would most-likely be overridden with the actual test logic.
+
     sub run { return { status => 'OK' } }
+
+See the note in L</check> regarding throwing exceptions in this method.
+
+=head3 summarize
+
+This performs extra logic if the diagnostic C<Result> has C<results>.
+This will squash the C<status> values in the nested structure, and
+validate that all the C<Result>s meet the specification in the
+L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
+
+If any of the values in the C<Result> are invalid,
+an C<OK> status is converted to C<UNKNOWN> and the validation
+error is appended to the C<info>.
+
+Here is an example of a L</run> override that uses summarize:
+
+    sub run {
+        my $result1 = {
+            status => 'OK',
+            info   => 'The test passed',
+        };
+        my $result2 = {
+            status => 'CRITICAL',
+            info   => 'The test failed',
+        };
+
+        return {
+            info    => 'Uses summarize',
+            results => [ $result1, $result2 ],
+        };
+    }
+
+Which returns this C<Result> after L</check> is called on the diagnostic:
+
+    {   status  => 'CRITICAL',
+        info    => 'Uses summarize',
+        results => [ $result1, $result2 ],
+    }
+
+Note that C<summarize> is called by the default L</check> method,
+so special treatment must be made if overridding L</check> in any way.
+
+=head3 check
+
+This is the default method that is called by the HealthCheck,
+which will L</summarize> the C<Result> returned by L</run>.
+
+If the diagnostic needs to handle validation and summarization, then
+C<check> would most-likely be overridden to handle these two operations.
+
+Parameter requirements can be enforced on the diagnostic.
+This type of validation is done as follows:
+
+    sub check {
+        my ($self, %params ) = @_;
+
+        return {
+            status => 'UNKNOWN',
+            info   => 'Missing required `file` key',
+        } unless $params{file};
+
+        my $res = $self->SUPER::check( %params );
+        return $res;
+    }
+
+Without calling the parent L</check> method, it is helpful to instead
+call L</summarize> since the C<id> and C<label> are passed through that
+method.
+
+One special note to keep in mind is this method will trap any exceptions
+during the call to L</run>, set the C<status> to C<CRITICAL>
+and put the exception message into the C<info> key of the C<Result>.
+Despite this feature, L</run> should be designed to return a C<Result>
+in most cases.
+
+Parameters may need to be generated on-the-fly with a passed-in callback.
+This anonymous function requires proper exception handling.
+
+    if( ref $params{api} eq 'CODE' ) {
+        local $@;
+        $params{api} = eval {
+            local $SIG{__DIE__};
+            $params{api}->();
+        };
+        return {
+            status => 'CRITICAL',
+            info   => "Error retrieving api from callback: $@",
+        } if $@;
+    }
+
+=head2 Writing class checks and instance checks
+
+There are two different ways to create a diagnostic.
+
+In general, it is not difficult in supporting both instance-based
+and class-based checks, so consider using the L</Multi checks> pattern
+wherever possible.
+
+=head3 Instance checks
+
+Instance checks are diagnostics that are designed to be used on an
+instance.
+This implementation requires an instance with the instance values being
+used in the check.
+
+When used on an instance, L</summarize> will copy the
+C<id>, C<label>, and C<tags> from the instance to the C<Result>
+if not already included.
+
+Here is an example instance-only implementation module:
+
+    package HealthCheck::Diagnostic::TempCheck;
+    use parent 'HealthCheck::Diagnostic';
+
+    sub check_temp { .. } # Returns a hashref using $_[1] as temp limit.
+
+    sub run {
+        my ($self, %params) = @_;
+        return $self->check_temp( $self->{temp_limit} );
+    };
+
     1;
 
-You can then use that as a check and have that return value validated:
+Here is an example using that module:
 
-    # As a class
-    $health_check->register( 'HealthCheck::Diagnostic::Simple' );
-
-    # As an object
-    my $diagnostic = HealthCheck::Diagnostic::Simple->new(
-        id    => "a_check",
-        label => "A Simple Check",
-        tags  => ['simple'],
+    my $diagnostic = HealthCheck::Diagnostic::TempCheck->new(
+        temp_limit => '22',
     );
-    $health_check->register($diagnostic);
+    $health_check->register( $diagnostic );
+    $health_check->check;
 
-When using it as an object, the parent class will automatically copy a
-select set of the attributes from the C<$diagnostic> object to the result.
-With the above set of checks registered, the results look something like:
+It might be beneficial to override the L</check> method in the
+instance-only diagnostic module for that restriction:
 
-    {   status  => "OK",
+    sub check {
+        my ($self, @args ) = @_;
+        croak( "check cannot be called as a class method" )
+            unless ref $self;
+        return $self->SUPER::check( @args );
+    }
+
+=head3 Class checks
+
+Class check diagnostics are designed so that the diagnostic does not
+need to be an instance.
+Class diagnostics pay special attention to the parameters that are
+passed to the L</check> and L</run> methods.
+
+It might be worthwhile to disable calling L</new> for class-only
+diagnostics.
+
+Here is an example of the same diagnostic listed above as a class check:
+
+    package HealthCheck::Diagnostic::TempCheck;
+    use parent 'HealthCheck::Diagnostic';
+
+    # Don't allow instantiating an instance
+    use Carp;
+    sub new { croak(__PACKAGE__ . " does not support being an instance.") }
+
+    sub check_temp { ... } # Returns a hashref using $_[1] as temp limit.
+
+    sub run {
+        my ($class, %params) = @_;
+        return $class->check_temp( $params{temp_limit} );
+    }
+
+    1;
+
+All parameters passed to the HealthCheck instance's C<check>
+are passed the diagnostic's L</check>, which are then passed to L</run>.
+Here is an example using that module in a health-check:
+
+    $health_check->register( 'HealthCheck::Diagnostic::TempCheck' );
+    $health_check->check( temp_limit => 65 );
+
+=head3 Multi checks
+
+It is possible, and ideal, to support both instance and class checks
+in the same module.
+The diagnostic just needs to be designed so that it can handle that:
+
+    package HealthCheck::Diagnostic::TempCheck;
+    use parent 'HealthCheck::Diagnostic';
+
+    sub check_temp { ... } # Returns a hashref using $_[1] as temp limit.
+
+    sub check {
+        my ($self, %params) = @_;
+        if ( ref $self ) {
+            # Default all instance values as arguments to the `run` method.
+            $params{$_} = $self->{$_}
+                foreach grep { ! defined $params{$_} } keys %$self;
+        }
+        return $self->SUPER::check( %params );
+    }
+
+    sub run {
+        my ($self, %params) = @_;
+        return $self->check_temp( $params{temp_limit} );
+    }
+
+    1;
+
+Then, the diagnostic can be used as either an instance or a class in
+a health check:
+
+    # Register a class check that uses all the defaults.
+    $health_check->register( 'HealthCheck::Diagnostic::TempCheck' );
+
+    # Register an instance check.
+    $diagnostic = HealthCheck::Diagnostic::TempCheck->new(
+        id          => 'night_temp',
+        label       => 'Temperature is cool enough to sleep in',
+        temp_limit  => 70, # Overridden by the value passed to `check`
+    );
+    $health_check->register( $diagnostic );
+
+    # Run the checks, pretending the current temperature is 72-degrees.
+    $health_check->check();
+
+The results from that last C<check> are displayed below.
+If the class-based check defined a default temperature limit,
+the C<UNKNOWN> sub-result C<status> may have changed.
+
+    {   status  => 'CRITICAL',
         results => [
-            { status => "OK" },
-            {   id     => "a_check",
-                label  => "A Simple Check",
-                status => "OK",
-                tags   => ["simple"]
+            {
+                status => 'UNKNOWN',
+                info   => 'The temperature limit is unknown',
+            },
+            {
+                id     => 'night_temp',
+                label  => 'Temperature is cool enough to sleep in',
+                status => 'CRITICAL',
+                info   => 'The temperature is too hot',
             },
         ],
     }
 
-=head3 Diagnostic Parameters
+Now, run the check again, by overriding the default temperature limit:
 
-As a side note, I need to mention what your C<run> method will get
-as arguments when it is called by the checker.
-To make your diagnostics more flexible, several things are passed as
-arguments when the check is run.
-When a check is registered as either a
-class or object based check its C<check> method is called, which makes
-the first argument the class or object,
-however a coderef does not get that first argument.
-The rest of the arguments are whatever is passed to the C<check> method,
-which should be assumed to be an even-sized list of arguments.
+    # Run the checks, pretending the current temperature is 72-degrees.
+    $health_check->check( temp_limit => 77 );
 
-For example, if you call the above check with an even-sized list:
+The results from the C<check> call are displayed below.
+Notice that everything is C<OK>, since the C<temp_limit>
+is 77 in both of the registered diagnostics.
 
-    $health_check->check( foo => 'bar' );
+    {   status  => 'OK',
+        results => [
+            {
+                status => 'OK',
+                info   => 'The temperature is just right',
+            },
+            {
+                id     => 'night_temp',
+                label  => 'Temperature is cool enough to sleep in',
+                status => 'OK',
+                info   => 'The temperature is just right',
+            },
+        ],
+    }
 
-Or even a hashref, which is expanded and passed as an even-sized list:
+=head2 More in-depth example
 
-    $health_check->check( { foo => 'bar' } );
+This example shows a check for a physical system.
+This sensor system can alert when to open or close the window.
+There are three sensors: inside, outside, and the window status.
+The inside sensor is used to get the indoor temperature.
+The outside sensor is used to get the outdoor temperature and weather.
+The window sensor is used to check if the window is open.
 
-Then the class based check gets the package name as a string,
-plus the parameters passed to check.
-
-    @_ = ( "HealthCheck::Diagnostic::Simple", "foo", "bar" );
-
-While the object based check is similarly called with the object
-and those same parameters.
-
-    @_ = ( $diagnostic, "foo", "bar" );
-
-Although a coderef check is only called with the parameters passed to
-the check:
-
-    $health_check->register( sub { ... } );
-    # in that sub, @_ = ( "foo", "bar" )
-
-The one parameter that, while still passed to the diagnostic,
-actually affects which diagnostics get called is the C<tags> argument.
-
-    $health_check->check( tags => ['simple'] );
-
-will only call the C<$diagnostic> check, as it has a C<'simple'> tag.
-
-=head3 A more in depth example
-
-In this example, we're going to add a check for a physical system
-to make it easier to visualize,
-a sensor system that can tell us when we should open or close the window.
-What we're going to imagine is that we have three sensors:
-inside, outside, and the window status.
-The inside sensor can tell us the current temperature,
-while the outside sensor can tell us both temperature and whether it is raining.
-The window sensor is just a boolean check for whether the window is open.
-
-
-We might initialize a diagnostic with several different sensors
-that let it decide whether our window is in a good position.
+The diagnostic is initialized with several different sensors and the
+ideal temperatures.
 
     my $diagnostic = HealthCheck::Diagnostic::WindowStatus->new(
         inside  => My::Sensor::Inside->new,
@@ -141,7 +366,7 @@ The implementation for that check might look something like this:
     sub run {
         my ($self) = @_;
 
-        # Gather some data that we can return to be used for graphing
+        # Gather some data that can be returned for graphing
         my @data = (
             {   label => "Inside Temperature",
                 value => $self->{inside}->temp,
@@ -168,7 +393,7 @@ The implementation for that check might look something like this:
             return \%res;
         }
 
-        # Otherwise, see if the state we want matches the current state.
+        # Otherwise, see if the desired state matches the current state.
         my $desired_state = $self->desired_state;
         if ( $desired_state ne $self->current_state ) {
             $res{status} = "WARNING";
@@ -210,77 +435,3 @@ The implementation for that check might look something like this:
     }
 
     1;
-
-
-Going through this we can pick out some important features this check
-implements,
-like inheriting from L<HealthCheck::Diagnostic>
-and defining a C<run> method.
-
-Some things to notice about the C<run> method are that it relies on other
-helper methods to make its decision about the state of the service and that
-it returns a hashref with several keys in addition to the C<status>.
-The L<info> is a human readable, short description of the result,
-something that tells a person what's going on.
-The C<data> key is a "machine readable output" of the check,
-although the output is not well defined, one use is to be compatible with
-the GSG
-L<Status API|https://support.grantstreet.com/wiki/display/DEVOPS/Status+API>
-specification, as this example shows.
-
-This Diagnostic should probably use the below C<check> override that
-validates that it is not being called as a class method.
-
-
-=head2 Useful Patterns
-
-=head3 Adding default attributes to your Diagnostics
-
-The call to C<new> can take either a hashref or an even-sized-list of
-parameters.
-
-    sub new {
-        my ($class, @params) = @_;
-
-        # Allow either a hashref or even-sized list of params
-        my %params = @params == 1 && ( ref $params[0] || '' ) eq 'HASH'
-            ? %{ $params[0] } : @params;
-
-        return $class->SUPER::new(
-            label => 'default_label',
-            %params
-        );
-    }
-
-=head3 Require calling check on an instance
-
-Sometimes your C<check> won't work as a class method and in that case,
-it's fairly easy to add validation that the check method was called on an
-instance.
-
-    sub check {
-        my ( $self, @args ) = @_;
-        croak("check cannot be called as a class method") unless ref $self;
-        return $self->SUPER::check(@args);
-    }
-
-
-=head3 Adding validation of check parameters
-
-You may want to require certain parameters to be passed to the
-C<check> to allow it to work as a class method, or just to override
-the values that may have been added to the instance.
-
-    sub check {
-        my ( $self, %params ) = @_;
-
-        my $api = $params{api};
-        $api ||= $self->{api} if ref $self;
-        croak("Valid 'api' is required") unless $api and do {
-            local $@; eval { local $SIG{__DIE__}; $api->can('ping') } };
-
-        my $res = $self->SUPER::check( %params, api => $api );
-        delete $res->{api};    # don't include the object in the result
-
-        return $res;
-    }

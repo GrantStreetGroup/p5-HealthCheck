@@ -378,10 +378,10 @@ sub run {
 
         my @res;
         if ( @r == 1 && ref $r[0] eq 'HASH' ) {
-            (@res) = _tagged_res({ %c }, $r[0]);
+            (@res) = _tagged_res({ %$self, %c }, $r[0]);
         }
         elsif ( @r % 2 == 0 ) {
-            (@res) = _tagged_res({ %c }, {@r});
+            (@res) = _tagged_res({ %$self, %c }, {@r});
         }
         else {
             my $c = $i ? "$i->$m" : "$m";

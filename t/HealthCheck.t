@@ -311,23 +311,42 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
         'status'  => 'CRITICAL',
         'tags'    => ['default'],
         'results' => [
-            { 'status' => 'OK' },
-            { 'id'     => 'fast_cheap', 'status' => 'OK' },
-            { 'id'     => 'fast_easy', 'status' => 'OK' },
+            {
+                'status' => 'OK',
+                'tags'   => ['default']
+            },
+            {
+                'id'     => 'fast_cheap',
+                'status' => 'OK',
+                'tags'   => [ qw(fast cheap) ]
+            },
+            {
+                'id'     => 'fast_easy',
+                'status' => 'OK',
+                'tags'   => [ qw(fast easy) ]
+            },
             {
                 'id'      => 'subcheck',
                 'status'  => 'CRITICAL',
                 'results' => [
-                    { 'id'     => 'subcheck_default', 'status' => 'OK' },
-                    { 'status' => 'CRITICAL' }
+                    {
+                        'id'     => 'subcheck_default',
+                        'status' => 'OK',
+                        # Inherited from the subcheck
+                        'tags'   => [qw( subcheck easy )],
+                    },
+                    {
+                        'status' => 'CRITICAL',
+                        'tags'   => [qw(hard)],
+                    }
                 ],
                 'tags' => [ 'subcheck', 'easy' ] }
         ],
     }, "Default check runs all checks";
 
     is_deeply $c->check( tags => ['default'] ), {
-        'id'      => 'main',
-        'tags' => ['default'],
+        'id'     => 'main',
+        'tags'   => ['default'],
         'status' => 'OK',
     }, "Check with 'default' tags runs only untagged check";
 
@@ -336,7 +355,10 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
         'status'  => 'OK',
         'tags'    => ['default'],
         'results' => [
-            { 'id' => 'fast_easy', 'status' => 'OK' },
+            {
+                'id'     => 'fast_easy',
+                'tags'   => [ 'fast', 'easy' ],
+                'status' => 'OK' },
             {
                 'id'     => 'subcheck_default',
                 'tags'   => [ 'subcheck', 'easy' ],

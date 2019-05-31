@@ -396,38 +396,37 @@ sub run {
             @r = { status => 'CRITICAL', info => $@ } if $@ and not @r;
         }
 
-        my @res;
-        if ( @r == 1 && ref $r[0] eq 'HASH' ) {
-            (@res) = _tagged_res({ %$self, %c }, $r[0]);
-        }
-        elsif ( @r % 2 == 0 ) {
-            (@res) = _tagged_res({ %$self, %c }, {@r});
-        }
-        else {
+        @r
+        = @r == 1 && ref $r[0] eq 'HASH' ? $r[0]
+        : @r % 2 == 0                    ? {@r}
+        : do {
             my $c = $i ? "$i->$m" : "$m";
             carp("Invalid return from $c (@r)");
+            ();
         };
 
-        @res;
+        if (@r) {
+            my %d;
+            my %i = do { local $@; eval { local $SIG{__DIE__}; %{$i} } };
+
+            foreach my $k (qw( id label tags )) {
+                if ( exists $c{$k} ) {
+                    $d{$k} = $c{$k};
+                }
+                elsif ( exists $i{$k} ) {
+                    $d{$k} = $i{$k};
+                }
+            }
+
+            @r = +{ %d, %{ $r[0] } };
+        }
+
+        @r;
     } grep {
         $self->should_run( $_, %params );
     } @{ $registered_checks{$self} || [] };
 
     return { results => \@results };
-}
-
-# Takes a health check response and sticks the approprate tags in it if
-# they're not already there
-sub _tagged_result {
-    my ($check_params, $result) = @_;
-
-    my $shallow_copy = { %$result };
-
-    if (defined $check_params->{tags}) {
-        $shallow_copy->{tags} //= $check_params->{tags};
-    }
-
-    return $shallow_copy;
 }
 
 =head1 INTERNALS

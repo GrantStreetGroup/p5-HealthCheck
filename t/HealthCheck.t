@@ -313,7 +313,6 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
         'results' => [
             {
                 'status' => 'OK',
-                'tags'   => ['default']
             },
             {
                 'id'     => 'fast_cheap',
@@ -332,8 +331,6 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
                     {
                         'id'     => 'subcheck_default',
                         'status' => 'OK',
-                        # Inherited from the subcheck
-                        'tags'   => [qw( subcheck easy )],
                     },
                     {
                         'status' => 'CRITICAL',
@@ -381,6 +378,110 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
             },
             "Check with 'hard' tags runs no checks, so no results";
     }
+}
+
+{ note "Result inheritance";
+    my $c = HealthCheck->new(
+        id     => 'main',
+        label  => 'Main',
+        tags   => ['main'],
+        checks => [
+            {   check => sub { +{ status => 'OK' } }
+            },
+
+            {   id    => 'from_check',
+                label => 'From Check',
+                tags  => [qw( from check )],
+                check => sub { +{ status => 'OK' } },
+            },
+            {   id    => 'from_check',
+                label => 'From Check',
+                tags  => [qw( from check )],
+                check => sub {
+                    +{  id     => 'from_result',
+                        label  => 'From Result',
+                        tags   => [qw( from result )],
+                        status => 'OK'
+                    };
+                },
+            },
+
+            {   invocant => HealthCheck->new,
+                check    => sub { +{ status => 'OK' } },
+            },
+
+            {   invocant => HealthCheck->new(
+                    id    => 'from_invocant',
+                    label => 'From Invocant',
+                    tags  => [qw( from invocant )],
+                ),
+                check => sub { +{ status => 'OK' } },
+            },
+            {   id       => 'with_invocant',
+                label    => 'With Invocant',
+                tags     => [qw( with invocant )],
+                invocant => HealthCheck->new(
+                    id    => 'from_invocant',
+                    label => 'from_Invocant',
+                    tags  => [qw( from invocant )],
+                ),
+                check => sub { +{ status => 'OK' } },
+            },
+
+            {   id       => 'with_invocant',
+                label    => 'With Invocant',
+                tags     => [qw( with invocant )],
+                invocant => HealthCheck->new(
+                    id    => 'from_invocant',
+                    label => 'from_Invocant',
+                    tags  => [qw( from invocant )],
+                ),
+                check => sub {
+                    +{  id     => 'invocant_result',
+                        label  => 'Invocant Result',
+                        tags   => [qw( invocant result )],
+                        status => 'OK'
+                    };
+                },
+            },
+        ],
+    );
+
+    is_deeply $c->check, {
+        'id'      => 'main',
+        'label'   => 'Main',
+        'tags'    => ['main'],
+        'status'  => 'OK',
+        'results' => [
+            { 'status' => 'OK' },
+            {   'id'     => 'from_check',
+                'label'  => 'From Check',
+                'tags'   => [ 'from', 'check' ],
+                'status' => 'OK',
+            },
+            {   'id'     => 'from_result',
+                'label'  => 'From Result',
+                'tags'   => [ 'from', 'result' ],
+                'status' => 'OK',
+            },
+            { 'status' => 'OK' },
+            {   'id'     => 'from_invocant',
+                'label'  => 'From Invocant',
+                'status' => 'OK',
+                'tags'   => [ 'from', 'invocant' ],
+            },
+            {   'id'     => 'with_invocant',
+                'label'  => 'With Invocant',
+                'tags'   => [ 'with', 'invocant' ],
+                'status' => 'OK',
+            },
+            {   'id'     => 'invocant_result',
+                'label'  => 'Invocant Result',
+                'tags'   => [ 'invocant', 'result' ],
+                'status' => 'OK',
+            }
+        ],
+    }, "Check that the inheritance of id, label, and tags as expected";
 }
 
 { note "Check that throws exception";

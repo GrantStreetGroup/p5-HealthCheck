@@ -103,8 +103,8 @@ C<%result> will be from the subset of checks run due to the tags.
     'status'  => 'WARNING',
     'tags'    => [ 'fast', 'cheap' ],
     'results' => [
-        { 'id' => 'coderef',  'status' => 'OK' },
-        { 'id' => 'my_check', 'status' => 'WARNING' },
+        { 'id' => 'coderef',  'tags' => ['fast', 'cheap'], 'status' => 'OK' },
+        { 'id' => 'my_check', 'tags' => ['fast', 'cheap'], 'status' => 'WARNING' },
         {
             'id'      => 'my_health_check',
             'label'   => 'My Health Check',
@@ -112,8 +112,8 @@ C<%result> will be from the subset of checks run due to the tags.
             'tags'    => [ 'cheap', 'easy' ],
             'other'   => 'Other details to include',
             'results' => [
-                { 'id' => 'class_method',  'status' => 'WARNING' },
-                { 'id' => 'object_method', 'status' => 'WARNING' },
+                { 'id' => 'class_method',  'tags' => ['cheap', 'easy'], 'status' => 'WARNING' },
+                { 'id' => 'object_method', 'tags' => ['cheap', 'easy'], 'status' => 'WARNING' },
             ],
         },
     ],

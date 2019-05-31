@@ -376,18 +376,38 @@ sub run {
             @r = { status => 'CRITICAL', info => $@ } if $@ and not @r;
         }
 
-          @r == 1 && ref $r[0] eq 'HASH' ? $r[0]
-        : @r % 2 == 0 ? {@r}
-        : do {
+        my @res;
+        if ( @r == 1 && ref $r[0] eq 'HASH' ) {
+            (@res) = _tagged_res({ %c }, $r[0]);
+        }
+        elsif ( @r % 2 == 0 ) {
+            (@res) = _tagged_res({ %c }, {@r});
+        }
+        else {
             my $c = $i ? "$i->$m" : "$m";
             carp("Invalid return from $c (@r)");
-            ();
         };
+
+        @res;
     } grep {
         $self->should_run( $_, %params );
     } @{ $registered_checks{$self} || [] };
 
     return { results => \@results };
+}
+
+# Takes a health check response and sticks the approprate tags in it if
+# they're not already there
+sub _tagged_result {
+    my ($check_params, $result) = @_;
+
+    my $shallow_copy = { %$result };
+
+    if (defined $check_params->{tags}) {
+        $shallow_copy->{tags} //= $check_params->{tags};
+    }
+
+    return $shallow_copy;
 }
 
 =head1 INTERNALS

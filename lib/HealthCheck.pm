@@ -22,7 +22,16 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
 
     use HealthCheck;
 
-    sub my_check { return { id => "my_check", status => 'WARNING' } }
+    # a check can return a hashref containing anything at all,
+    # however some values are special.
+    # See the HealthCheck Standard for details.
+    sub my_check {
+        return {
+            anything => "at all",
+            id       => "my_check",
+            status   => 'WARNING',
+        };
+    }
 
     my $checker = HealthCheck->new(
         id     => 'main_checker',
@@ -38,11 +47,19 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
         id     => 'my_health_check',
         label  => "My Health Check",
         tags   => [qw( cheap easy )],
-        other  => "Other details to include",
+        other  => "Other details to pass to the check call",
     )->register(
         'My::Checker',       # Name of a loaded class that ->can("check")
         My::Checker->new,    # Object that ->can("check")
     );
+
+    # It's possible to add ids, labels, and tags to your checks
+    # and they will be copied to the Result
+    $other_checker->register( My::Checker->new(
+        id    => 'my_checker',
+        label => 'My Checker',
+        tags  => [qw( cheap copied_to_the_result )]
+    ) );
 
     # You can add HealthCheck instances as checks
     # You could add a check to itself to create an infinite loop of checks.
@@ -78,7 +95,7 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
     # summarizing multiple results.
     sub run {
         return {
-            id => ( ref $_[0] ? "object_method" : "class_method" ),
+            id     => ( ref $_[0] ? "object_method" : "class_method" ),
             status => "WARNING",
         };
     }
@@ -98,22 +115,25 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
 
 C<%result> will be from the subset of checks run due to the tags.
 
-    'id'      => 'main_checker',
-    'label'   => 'Main Health Check',
-    'status'  => 'WARNING',
-    'tags'    => [ 'fast', 'cheap' ],
-    'results' => [
-        { 'id' => 'coderef',  'tags' => ['fast', 'cheap'], 'status' => 'OK' },
-        { 'id' => 'my_check', 'tags' => ['fast', 'cheap'], 'status' => 'WARNING' },
-        {
-            'id'      => 'my_health_check',
-            'label'   => 'My Health Check',
-            'status'  => 'WARNING',
-            'tags'    => [ 'cheap', 'easy' ],
-            'other'   => 'Other details to include',
-            'results' => [
-                { 'id' => 'class_method',  'tags' => ['cheap', 'easy'], 'status' => 'WARNING' },
-                { 'id' => 'object_method', 'tags' => ['cheap', 'easy'], 'status' => 'WARNING' },
+    id      => "main_checker",
+    label   => "Main Health Check",
+    tags    => [ "fast", "cheap" ],
+    status  => "WARNING",
+    results => [
+        { id       => "coderef", status => "OK" },
+        { anything => "at all",  id     => "my_check", status => "WARNING" },
+        {   id      => "my_health_check",
+            label   => "My Health Check",
+            tags    => [ "cheap", "easy" ],
+            status  => "WARNING",
+            results => [
+                { id => "class_method",  status => "WARNING" },
+                { id => "object_method", status => "WARNING" },
+                {   id         => "object_method",
+                    label      => "My Checker",
+                    tags       => [ "cheap", "copied_to_the_result" ],
+                    status     => "WARNING",
+                }
             ],
         },
     ],

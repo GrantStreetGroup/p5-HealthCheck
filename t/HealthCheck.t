@@ -418,6 +418,13 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
                 check    => sub { +{ status => 'OK' } },
             },
 
+            HealthCheck->new(
+                checks => [
+                    sub { +{ status => 'OK' } },
+                    sub { +{ status => 'OK' } },
+                ],
+            ),
+
             {   invocant => HealthCheck->new(
                     id    => 'from_invocant',
                     label => 'From Invocant',
@@ -482,6 +489,16 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
                 'label'  => 'Main',
                 'tags'   => [ 'main' ],
                 'status' => 'OK'
+            },
+            {
+                'id'     => 'main',
+                'label'  => 'Main',
+                'tags'   => [ 'main' ],
+                'status' => 'OK',
+                results => [
+                    { status => 'OK' },
+                    { status => 'OK' },
+                ],
             },
             {   'id'     => 'from_invocant',
                 'label'  => 'From Invocant',

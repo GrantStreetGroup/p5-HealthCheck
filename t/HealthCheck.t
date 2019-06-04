@@ -315,7 +315,6 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
         'tags'    => ['default'],
         'results' => [
             {
-                'id'     => 'main',
                 'status' => 'OK',
                 'tags'   => [ 'default' ]
             },
@@ -340,7 +339,6 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
                         'tags'   => [ qw(subcheck easy) ],
                     },
                     {
-                        'id'     => 'subcheck',
                         'status' => 'CRITICAL',
                         'tags'   => [qw(hard)],
                     }
@@ -468,10 +466,7 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
         'tags'    => ['main'],
         'status'  => 'OK',
         'results' => [
-            {
-                'id'     => 'main',
-                'label'  => 'Main',
-                'tags'   => [ 'main' ],
+            {   'tags'   => [ 'main' ],
                 'status' => 'OK'
             },
             {   'id'     => 'from_check',
@@ -484,16 +479,10 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
                 'tags'   => [ 'from', 'result' ],
                 'status' => 'OK',
             },
-            {
-                'id'     => 'main',
-                'label'  => 'Main',
-                'tags'   => [ 'main' ],
+            {   'tags'   => [ 'main' ],
                 'status' => 'OK'
             },
-            {
-                'id'     => 'main',
-                'label'  => 'Main',
-                'tags'   => [ 'main' ],
+            {   'tags'   => [ 'main' ],
                 'status' => 'OK',
                 results => [
                     { status => 'OK' },

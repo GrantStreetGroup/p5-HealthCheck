@@ -122,33 +122,35 @@ C<%result> will be from the subset of checks run due to the tags.
     tags    => [ "fast", "cheap" ],
     status  => "WARNING",
     results => [
-        {
-            id     => "coderef",
+        {   id     => "coderef",
             status => "OK",
-            label  => 'Main Health Check', # inherited
             tags   => [ "fast", "cheap" ]  # inherited
         },
-        {
-            anything => "at all",
+        {   anything => "at all",
             id       => "my_check",
             status   => "WARNING",
-            label    => 'Main Health Check', # inherited
-            tags     => [ "fast", "cheap" ]  # inherited
+            tags     => [ "fast", "cheap" ] # inherited
         },
         {   id      => "my_health_check",
             label   => "My Health Check",
             tags    => [ "cheap", "easy" ],
             status  => "WARNING",
             results => [
-                { id => "class_method",  label => 'My Health Check', status => "WARNING", tags => [ "cheap", "easy" ] },
-                { id => "object_method", label => 'My Health Check', status => "WARNING", tags => [ "cheap", "easy" ] },
-                {   id         => "object_method",
-                    label      => "My Checker",
-                    tags       => [ "cheap", "copied_to_the_result" ],
-                    status     => "WARNING",
+                {   id     => "class_method",
+                    tags   => [ "cheap", "easy" ],
+                    status => "WARNING",
+                },
+                {   id     => "object_method",
+                    tags   => [ "cheap", "easy" ],
+                    status => "WARNING",
+                },
+                {   id     => "object_method",
+                    label  => "My Checker",
+                    tags   => [ "cheap", "copied_to_the_result" ],
+                    status => "WARNING",
                 }
             ],
-        },
+        }
     ],
 
 =head1 DESCRIPTION
@@ -458,8 +460,14 @@ sub _set_check_response_defaults {
             }
         }
 
-        $self->_set_default_fields(\%defaults, $field);
+        # we only copy tags from the checker to the sub-checks,
+        # and only if they don't exist.
+        $self->_set_default_fields(\%defaults, $field)
+            if $field eq 'tags';
     }
+
+    # deref the tags, just in case someone decides to adjust them later.
+    $defaults{tags} = [ @{ $defaults{tags} } ] if $defaults{tags};
 
     $c->{_respond} = \%defaults;
 }

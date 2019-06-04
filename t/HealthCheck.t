@@ -255,6 +255,9 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
         'Invocant Can',
     ], "Without specifying any desired tags, should run all checks";
 
+    is_deeply $run->('default'), [ 'Default' ],
+        'Default tag runs untagged checks';
+
     is_deeply $run->('fast'), [ 'Fast and Cheap', 'Fast and Easy', ],
         "Fast tag runs fast checks";
 
@@ -312,7 +315,9 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
         'tags'    => ['default'],
         'results' => [
             {
+                'id'     => 'main',
                 'status' => 'OK',
+                'tags'   => [ 'default' ]
             },
             {
                 'id'     => 'fast_cheap',
@@ -331,8 +336,11 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
                     {
                         'id'     => 'subcheck_default',
                         'status' => 'OK',
+                        # inherit super-check's tags
+                        'tags'   => [ qw(subcheck easy) ],
                     },
                     {
+                        'id'     => 'subcheck',
                         'status' => 'CRITICAL',
                         'tags'   => [qw(hard)],
                     }
@@ -453,7 +461,12 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
         'tags'    => ['main'],
         'status'  => 'OK',
         'results' => [
-            { 'status' => 'OK' },
+            {
+                'id'     => 'main',
+                'label'  => 'Main',
+                'tags'   => [ 'main' ],
+                'status' => 'OK'
+            },
             {   'id'     => 'from_check',
                 'label'  => 'From Check',
                 'tags'   => [ 'from', 'check' ],
@@ -464,7 +477,12 @@ my $nl = $] >= 5.016 ? ".\n" : "\n";
                 'tags'   => [ 'from', 'result' ],
                 'status' => 'OK',
             },
-            { 'status' => 'OK' },
+            {
+                'id'     => 'main',
+                'label'  => 'Main',
+                'tags'   => [ 'main' ],
+                'status' => 'OK'
+            },
             {   'id'     => 'from_invocant',
                 'label'  => 'From Invocant',
                 'status' => 'OK',

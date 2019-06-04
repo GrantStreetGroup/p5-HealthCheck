@@ -378,8 +378,10 @@ sub run {
 
     my @results = map {
         my %c = %{$_};
-        my $i = delete $c{invocant} || '';
-        my $m = delete $c{check}    || '';
+        $self->_set_check_response_defaults(\%c);
+        my $defaults = delete $c{_respond};
+        my $i        = delete $c{invocant} || '';
+        my $m        = delete $c{check}    || '';
 
         my @r;
         # Exceptions will probably not contain child health check's metadata,
@@ -405,21 +407,7 @@ sub run {
             ();
         };
 
-        if (@r) {
-            my %d;
-            my %i = do { local $@; eval { local $SIG{__DIE__}; %{$i} } };
-
-            foreach my $k (qw( id label tags )) {
-                if ( exists $c{$k} ) {
-                    $d{$k} = $c{$k};
-                }
-                elsif ( exists $i{$k} ) {
-                    $d{$k} = $i{$k};
-                }
-            }
-
-            @r = +{ %d, %{ $r[0] } };
-        }
+        if (@r) { @r = +{ %$defaults, %{ $r[0] } } }
 
         @r;
     } grep {
@@ -427,6 +415,40 @@ sub run {
     } @{ $registered_checks{$self} || [] };
 
     return { results => \@results };
+}
+
+sub _set_check_response_defaults {
+    my ($self, $c) = @_;
+    return if exists $c->{_respond};
+
+    my %defaults;
+    FIELD: for my $field ( qw(id label tags) ) {
+        if (exists $c->{$field}) {
+            $defaults{$field} = $c->{$field};
+            next FIELD;
+        }
+
+        if ( $c->{invocant} && $c->{invocant}->can($field) ) {
+            my $val;
+            if ( $field eq 'tags' ) {
+                if (my @tags = $c->{invocant}->$field) {
+                    $val = [@tags];
+                }
+            }
+            else {
+                $val = $c->{invocant}->$field;
+            }
+
+            if (defined $val) {
+                $defaults{$field} = $val;
+                next FIELD;
+            }
+        }
+
+        $self->_set_default_fields(\%defaults, $field);
+    }
+
+    $c->{_respond} = \%defaults;
 }
 
 =head1 INTERNALS
@@ -467,17 +489,11 @@ when the object was created.
 sub _has_tags {
     my ($self, $check, @want_tags) = @_;
 
-    my %have_tags = do {
-        my @t = @{ $check->{tags} || [] };
+    $self->_set_check_response_defaults($check);
 
-        @t = $check->{invocant}->tags
-            if not @t
-            and $check->{invocant}
-            and $check->{invocant}->can('tags');
-
-        @t = $self->tags unless @t;
-        map { $_ => 1 } @t;
-    };
+    # Look at what the check responds to, not what was initially specified
+    # (in case tags are inherited)
+    my %have_tags = map { $_ => 1 } @{ $check->{_respond}{tags} || [] };
 
     return any { $have_tags{$_} } @want_tags;
 }

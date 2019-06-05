@@ -138,6 +138,22 @@ Read only accessor that returns the list of tags registered with this object.
 
 sub tags { return unless ref $_[0]; @{ shift->{tags} || [] } }
 
+=head2 id
+
+Read only accessor that returns the id registered with this object.
+
+=cut
+
+sub id { return unless ref $_[0]; return shift->{id} }
+
+=head2 label
+
+Read only accessor that returns the label registered with this object.
+
+=cut
+
+sub label { return unless ref $_[0]; return shift->{label} }
+
 =head2 check
 
     my %results = %{ $diagnostic->check(%params) }
@@ -259,13 +275,18 @@ Modifies the passed in hashref in-place.
 sub summarize {
     my ( $self, $result ) = @_;
 
-    if ( ref $self ) {
-        $result->{$_} = $self->{$_}
-            for grep { not exists $result->{$_} }
-            grep     { exists $self->{$_} } qw( id label tags );
-    }
+    $self->_set_default_fields($result, qw(id label tags));
 
     return $self->_summarize( $result, $result->{id} // 0 );
+}
+
+sub _set_default_fields {
+    my ($self, $target, @fields) = @_;
+    if ( ref $self ) {
+        $target->{$_} = $self->{$_}
+            for grep { not exists $target->{$_} }
+            grep     { exists $self->{$_} } @fields;
+    }
 }
 
 sub _summarize {

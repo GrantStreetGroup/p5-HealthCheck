@@ -22,7 +22,16 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
 
     use HealthCheck;
 
-    sub my_check { return { id => "my_check", status => 'WARNING' } }
+    # a check can return a hashref containing anything at all,
+    # however some values are special.
+    # See the HealthCheck Standard for details.
+    sub my_check {
+        return {
+            anything => "at all",
+            id       => "my_check",
+            status   => 'WARNING',
+        };
+    }
 
     my $checker = HealthCheck->new(
         id     => 'main_checker',
@@ -38,11 +47,19 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
         id     => 'my_health_check',
         label  => "My Health Check",
         tags   => [qw( cheap easy )],
-        other  => "Other details to include",
+        other  => "Other details to pass to the check call",
     )->register(
         'My::Checker',       # Name of a loaded class that ->can("check")
         My::Checker->new,    # Object that ->can("check")
     );
+
+    # It's possible to add ids, labels, and tags to your checks
+    # and they will be copied to the Result
+    $other_checker->register( My::Checker->new(
+        id    => 'my_checker',
+        label => 'My Checker',
+        tags  => [qw( cheap copied_to_the_result )]
+    ) );
 
     # You can add HealthCheck instances as checks
     # You could add a check to itself to create an infinite loop of checks.
@@ -78,7 +95,7 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
     # summarizing multiple results.
     sub run {
         return {
-            id => ( ref $_[0] ? "object_method" : "class_method" ),
+            id     => ( ref $_[0] ? "object_method" : "class_method" ),
             status => "WARNING",
         };
     }
@@ -98,24 +115,42 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
 
 C<%result> will be from the subset of checks run due to the tags.
 
-    'id'      => 'main_checker',
-    'label'   => 'Main Health Check',
-    'status'  => 'WARNING',
-    'tags'    => [ 'fast', 'cheap' ],
-    'results' => [
-        { 'id' => 'coderef',  'status' => 'OK' },
-        { 'id' => 'my_check', 'status' => 'WARNING' },
-        {
-            'id'      => 'my_health_check',
-            'label'   => 'My Health Check',
-            'status'  => 'WARNING',
-            'tags'    => [ 'cheap', 'easy' ],
-            'other'   => 'Other details to include',
-            'results' => [
-                { 'id' => 'class_method',  'status' => 'WARNING' },
-                { 'id' => 'object_method', 'status' => 'WARNING' },
-            ],
+    $checker->check(tags => ['cheap']);
+
+    id      => "main_checker",
+    label   => "Main Health Check",
+    tags    => [ "fast", "cheap" ],
+    status  => "WARNING",
+    results => [
+        {   id     => "coderef",
+            status => "OK",
+            tags   => [ "fast", "cheap" ]  # inherited
         },
+        {   anything => "at all",
+            id       => "my_check",
+            status   => "WARNING",
+            tags     => [ "fast", "cheap" ] # inherited
+        },
+        {   id      => "my_health_check",
+            label   => "My Health Check",
+            tags    => [ "cheap", "easy" ],
+            status  => "WARNING",
+            results => [
+                {   id     => "class_method",
+                    tags   => [ "cheap", "easy" ],
+                    status => "WARNING",
+                },
+                {   id     => "object_method",
+                    tags   => [ "cheap", "easy" ],
+                    status => "WARNING",
+                },
+                {   id     => "object_method",
+                    label  => "My Checker",
+                    tags   => [ "cheap", "copied_to_the_result" ],
+                    status => "WARNING",
+                }
+            ],
+        }
     ],
 
 =head1 DESCRIPTION
@@ -358,8 +393,10 @@ sub run {
 
     my @results = map {
         my %c = %{$_};
-        my $i = delete $c{invocant} || '';
-        my $m = delete $c{check}    || '';
+        $self->_set_check_response_defaults(\%c);
+        my $defaults = delete $c{_respond};
+        my $i        = delete $c{invocant} || '';
+        my $m        = delete $c{check}    || '';
 
         my @r;
         # Exceptions will probably not contain child health check's metadata,
@@ -376,18 +413,63 @@ sub run {
             @r = { status => 'CRITICAL', info => $@ } if $@ and not @r;
         }
 
-          @r == 1 && ref $r[0] eq 'HASH' ? $r[0]
-        : @r % 2 == 0 ? {@r}
+        @r
+        = @r == 1 && ref $r[0] eq 'HASH' ? $r[0]
+        : @r % 2 == 0                    ? {@r}
         : do {
             my $c = $i ? "$i->$m" : "$m";
             carp("Invalid return from $c (@r)");
             ();
         };
+
+        if (@r) { @r = +{ %$defaults, %{ $r[0] } } }
+
+        @r;
     } grep {
         $self->should_run( $_, %params );
     } @{ $registered_checks{$self} || [] };
 
     return { results => \@results };
+}
+
+sub _set_check_response_defaults {
+    my ($self, $c) = @_;
+    return if exists $c->{_respond};
+
+    my %defaults;
+    FIELD: for my $field ( qw(id label tags) ) {
+        if (exists $c->{$field}) {
+            $defaults{$field} = $c->{$field};
+            next FIELD;
+        }
+
+        if ( $c->{invocant} && $c->{invocant}->can($field) ) {
+            my $val;
+            if ( $field eq 'tags' ) {
+                if (my @tags = $c->{invocant}->$field) {
+                    $val = [@tags];
+                }
+            }
+            else {
+                $val = $c->{invocant}->$field;
+            }
+
+            if (defined $val) {
+                $defaults{$field} = $val;
+                next FIELD;
+            }
+        }
+
+        # we only copy tags from the checker to the sub-checks,
+        # and only if they don't exist.
+        $self->_set_default_fields(\%defaults, $field)
+            if $field eq 'tags';
+    }
+
+    # deref the tags, just in case someone decides to adjust them later.
+    $defaults{tags} = [ @{ $defaults{tags} } ] if $defaults{tags};
+
+    $c->{_respond} = \%defaults;
 }
 
 =head1 INTERNALS
@@ -428,17 +510,11 @@ when the object was created.
 sub _has_tags {
     my ($self, $check, @want_tags) = @_;
 
-    my %have_tags = do {
-        my @t = @{ $check->{tags} || [] };
+    $self->_set_check_response_defaults($check);
 
-        @t = $check->{invocant}->tags
-            if not @t
-            and $check->{invocant}
-            and $check->{invocant}->can('tags');
-
-        @t = $self->tags unless @t;
-        map { $_ => 1 } @t;
-    };
+    # Look at what the check responds to, not what was initially specified
+    # (in case tags are inherited)
+    my %have_tags = map { $_ => 1 } @{ $check->{_respond}{tags} || [] };
 
     return any { $have_tags{$_} } @want_tags;
 }

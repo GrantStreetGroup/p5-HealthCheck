@@ -1,8 +1,8 @@
-=head1 Writing a HealthCheck::Diagnostic
+# PODNAME: HealthCheck::WritingADiagnostic
+# ABSTRACT: How to write a diagnostic
+# VERSION
 
-This document is here to help write a diagnostic.
-
-=head2 What is a HealthCheck Diagnostic?
+=head1 What is a HealthCheck Diagnostic?
 
 A health check diagnostic is a specific test that is focused on one
 area of an application's health.
@@ -28,7 +28,7 @@ look something like this:
         info   => "Connecting to the database",
     }
 
-=head2 Diagnostic methods
+=head1 Diagnostic methods
 
 The L<HealthCheck::Diagnostic> module provides a base for writing
 custom checks with a guarantee that the returned C<Result> conforms
@@ -36,7 +36,7 @@ to the
 L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
 When creating a diagnostic, a few different methods can be overridden.
 
-=head3 new
+=head2 new
 
 This is the basic constructor method.
 It just returns the blessed object, so overriding this method allows
@@ -63,7 +63,7 @@ even-sized list of parameters. This is the default behavior on the
 original constructor, and should be included in any subclasses for
 consistency.
 
-=head3 run
+=head2 run
 
 This is where the check is normally implemented.
 It runs the test and returns a C<Result>.
@@ -73,7 +73,7 @@ This method would most-likely be overridden with the actual test logic.
 
 See the note in L</check> regarding throwing exceptions in this method.
 
-=head3 summarize
+=head2 summarize
 
 This performs extra logic if the diagnostic C<Result> has C<results>.
 This will squash the C<status> values in the nested structure, and
@@ -112,7 +112,7 @@ Which returns this C<Result> after L</check> is called on the diagnostic:
 Note that C<summarize> is called by the default L</check> method,
 so special treatment must be made if overridding L</check> in any way.
 
-=head3 check
+=head2 check
 
 This is the default method that is called by the HealthCheck,
 which will L</summarize> the C<Result> returned by L</run>.
@@ -160,7 +160,7 @@ This anonymous function requires proper exception handling.
         } if $@;
     }
 
-=head2 Writing class checks and instance checks
+=head1 Writing class checks and instance checks
 
 There are two different ways to create a diagnostic.
 
@@ -168,7 +168,7 @@ In general, it is not difficult in supporting both instance-based
 and class-based checks, so consider using the L</Multi checks> pattern
 wherever possible.
 
-=head3 Instance checks
+=head2 Instance checks
 
 Instance checks are diagnostics that are designed to be used on an
 instance.
@@ -211,7 +211,7 @@ instance-only diagnostic module for that restriction:
         return $self->SUPER::check( @args );
     }
 
-=head3 Class checks
+=head2 Class checks
 
 Class check diagnostics are designed so that the diagnostic does not
 need to be an instance.
@@ -246,7 +246,7 @@ Here is an example using that module in a health-check:
     $health_check->register( 'HealthCheck::Diagnostic::TempCheck' );
     $health_check->check( temp_limit => 65 );
 
-=head3 Multi checks
+=head2 Multi checks
 
 It is possible, and ideal, to support both instance and class checks
 in the same module.
@@ -334,7 +334,7 @@ is 77 in both of the registered diagnostics.
         ],
     }
 
-=head2 More in-depth example
+=head1 More in-depth example
 
 This example shows a check for a physical system.
 This sensor system can alert when to open or close the window.

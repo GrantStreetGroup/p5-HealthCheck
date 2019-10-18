@@ -1,36 +1,21 @@
-PERL_CARTON_PERL5LIB := ./lib:$(PERL5LIB):$(PERL_CARTON_PERL5LIB)
-export PERL_CARTON_PERL5LIB
+SHARE_DIR := $(shell \
+	carton exec perl -Ilib -MFile::ShareDir=dist_dir -e \
+		'print eval { dist_dir("Dist-Zilla-PluginBundle-Author-GSG-Internal") }')
 
-CPANFILE := $(wildcard cpanfile cpanfile.prerelease/*)
-
-# Not sure how to use the .perl-version target before we have it
-CPANFILE_SNAPSHOT := $(shell \
-  PLENV_VERSION=$$( plenv which carton 2>&1 | grep '^  5' | tail -1 ); \
-  [ -n "$$PLENV_VERSION" ] && plenv local $$PLENV_VERSION; \
-  carton exec perl -MFile::Spec -E \
-	'($$_) = grep { -e } map{ "$$_/../../cpanfile.snapshot" } \
-		grep { m(/lib/perl5$$) } @INC; \
-		say File::Spec->abs2rel($$_) if $$_' )
-
-ifndef CPANFILE_SNAPSHOT
-	CPANFILE_SNAPSHOT := .MAKE
+ifneq ($(SHARE_DIR),)
+include $(SHARE_DIR)/Makefile.inc
 endif
 
-.PHONY : test
+# Copy the SHARE_DIR Makefile over this one:
+# Making it .PHONY will force it to copy even if this one is newer.
+.PHONY: Makefile
+Makefile: $(SHARE_DIR)/Makefile.inc
+	cp $< $@
 
-test : $(CPANFILE_SNAPSHOT)
-	@nice carton exec prove -lfr t
-
-# This target requires that you add 'requires "Devel::Cover";'
-# to the cpanfile and then run "carton" to install it.
-testcoverage : $(CPANFILE_SNAPSHOT)
-	carton exec -- cover -test -ignore . -select ^lib
-
-$(CPANFILE_SNAPSHOT): .perl-version $(CPANFILE)
-	carton install
-
-.perl-version:
-	plenv local $$( plenv whence carton | grep '^5' | tail -1 )
-
-clean:
-	rm -rf cover_db
+# Seems something went wrong and SHARE_DIR is empty,
+# that means we need to complain and bail out.
+# Hopefully the shell command above provided a useful message.
+/Makefile.inc:
+	@echo Something went wrong, make sure you followed the instructions >&2
+	@echo 'to install carton and run "carton install".' >&2
+	@false

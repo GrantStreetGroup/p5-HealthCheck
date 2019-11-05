@@ -19,3 +19,4 @@ local/
 HealthCheck-v*/
 HealthCheck-v*.tar.*
 .perl-version
+*.bak

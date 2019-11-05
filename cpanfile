@@ -4,6 +4,8 @@ use GSG::Gitc::CPANfile $_environment;
 requires 'List::Util', '>= 1.43';
 test_requires 'Test::Strict';
 
-author_requires 'Dist::Zilla::PluginBundle::GSGBundle';
 
 1;
+on develop => sub {
+    requires 'Dist::Zilla::PluginBundle::Author::GSG::Internal';
+};

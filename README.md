@@ -156,7 +156,7 @@ are available before starting work.
 - Different sorts of monitoring checks that are defined in your codebase.
 
 Results returned by these checks should correspond to the GSG
-[Health Check Standard](https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard).
+[Health Check Standard](https://grantstreetgroup.github.io/HealthCheck.html).
 
 You may want to use [HealthCheck::Diagnostic](https://metacpan.org/pod/HealthCheck%3A%3ADiagnostic) to simplify writing your
 check slightly.

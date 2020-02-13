@@ -182,7 +182,7 @@ Different sorts of monitoring checks that are defined in your codebase.
 =back
 
 Results returned by these checks should correspond to the GSG
-L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
+L<Health Check Standard|https://grantstreetgroup.github.io/HealthCheck.html>.
 
 You may want to use L<HealthCheck::Diagnostic> to simplify writing your
 check slightly.

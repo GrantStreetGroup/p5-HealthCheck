@@ -305,7 +305,8 @@ None
 
 [HealthCheck::Diagnostic](https://metacpan.org/pod/HealthCheck%3A%3ADiagnostic)
 
-The GSG [Health Check Standard](https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard)
+The GSG
+[Health Check Standard](https://grantstreetgroup.github.io/HealthCheck.html).
 
 # AUTHOR
 

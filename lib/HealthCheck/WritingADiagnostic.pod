@@ -11,7 +11,7 @@ the app can connect to a database.
 
 In technical terms, a health check diagnostic is a subroutine that
 returns a hashref adhering to the
-L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>
+L<Health Check Standard|https://grantstreetgroup.github.io/HealthCheck.html>
 format. This hashref is commonly known as the C<HealthCheck Result>, or
 C<Result>.
 
@@ -33,7 +33,7 @@ look something like this:
 The L<HealthCheck::Diagnostic> module provides a base for writing
 custom checks with a guarantee that the returned C<Result> conforms
 to the
-L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
+L<Health Check Standard|https://grantstreetgroup.github.io/HealthCheck.html>.
 When creating a diagnostic, a few different methods can be overridden.
 
 =head2 new
@@ -78,7 +78,7 @@ See the note in L</check> regarding throwing exceptions in this method.
 This performs extra logic if the diagnostic C<Result> has C<results>.
 This will squash the C<status> values in the nested structure, and
 validate that all the C<Result>s meet the specification in the
-L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
+L<Health Check Standard|https://grantstreetgroup.github.io/HealthCheck.html>.
 
 If any of the values in the C<Result> are invalid,
 an C<OK> status is converted to C<UNKNOWN> and the validation

@@ -8,7 +8,7 @@ MAIN_MODULE ?= $(shell perl -ne '/^\s*main_module\s*=\s*(\S+)/ && print $$1' dis
 CARTON      ?= $(shell which carton 2>/dev/null || echo carton )
 SHARE_DIR   ?= $(shell \
   $(CARTON) exec -- perl -Ilib -MFile::ShareDir=dist_dir -e \
-    'print eval { dist_dir("Dist-Zilla-PluginBundle-Author-GSG-Internal") }' 2>/dev/null )
+    'print eval { dist_dir("Dist-Zilla-PluginBundle-Author-GSG") }' 2>/dev/null )
 
 CPANFILE_SNAPSHOT ?= $(shell \
   carton exec perl -MFile::Spec -e \
@@ -27,7 +27,7 @@ CPANFILE_SNAPSHOT    := cpanfile.snapshot
 endif
 CARTON_INSTALL_FLAGS ?= --without develop
 PERL_CARTON_PERL5LIB ?= $(PERL5LIB)
-CONTRIB              ?= Jenkinsfile MANIFEST.SKIP
+CONTRIB              ?= CONTRIBUTING.md
 EXTRA_UPDATES        += $(CONTRIB)
 
 # If someone includes this Makefile, don't write the Makefile
@@ -67,7 +67,7 @@ clean:
 realclean: clean
 	rm -rf local
 
-update: README.md $(EXTRA_UPDATES)
+update: README.md LICENSE.txt $(EXTRA_UPDATES)
 	@echo Everything is up to date
 
 README.md: $(MAIN_MODULE) dist.ini $(ON_DEVELOP)

@@ -1,11 +1,11 @@
-use GSG::Gitc::CPANfile $_environment;
-
-# Project requirements go here...
 requires 'List::Util', '>= 1.43';
-test_requires 'Test::Strict';
 
+on test => sub {
+    requires 'Test::Strict';
+};
+
+on develop => sub {
+    requires 'Dist::Zilla::PluginBundle::Author::GSG', 'v0.0.19';
+};
 
 1;
-on develop => sub {
-    requires 'Dist::Zilla::PluginBundle::Author::GSG::Internal';
-};

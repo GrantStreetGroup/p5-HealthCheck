@@ -4,7 +4,7 @@ HealthCheck - A health check for your code
 
 # VERSION
 
-version 1.5.1.1
+version v1.5.3
 
 # SYNOPSIS
 
@@ -156,7 +156,7 @@ are available before starting work.
 - Different sorts of monitoring checks that are defined in your codebase.
 
 Results returned by these checks should correspond to the GSG
-[Health Check Standard](https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard).
+[Health Check Standard](https://grantstreetgroup.github.io/HealthCheck.html).
 
 You may want to use [HealthCheck::Diagnostic](https://metacpan.org/pod/HealthCheck%3A%3ADiagnostic) to simplify writing your
 check slightly.
@@ -305,7 +305,8 @@ None
 
 [HealthCheck::Diagnostic](https://metacpan.org/pod/HealthCheck%3A%3ADiagnostic)
 
-The GSG [Health Check Standard](https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard)
+The GSG
+[Health Check Standard](https://grantstreetgroup.github.io/HealthCheck.html).
 
 # AUTHOR
 
@@ -313,38 +314,8 @@ Grant Street Group <developers@grantstreet.com>
 
 # COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2017 - 2019 by Grant Street Group.  No
-license is granted to other entities.
+This software is Copyright (c) 2017 - 2020 by Grant Street Group.
 
-# CONTRIBUTORS
+This is free software, licensed under:
 
-- Authors:
-- (95) Andrew Fresh <andrew.fresh@grantstreet.com>
-- (10) Brandon Messineo <brandon.messineo@grantstreet.com>
-- (6) Jonathan Rubin <jon.rubin@grantstreet.com>
-- (4) Andrew Hewus Fresh <andrew.fresh@grantstreet.com>
-- (4) Jon Rubin <jrubin@grantstreet.com>
-- (3) Orenda Orr <orenda.orr@grantstreet.com>
-- (2) Mitch McCracken <mmccrack@grantstreet.com>
-- (1) Benjamin Suntrup <bsuntrup@grantstreet.com>
-- (1) Brendan Byrd <brendan.byrd@grantstreet.com>
-- (1) Josh Ballard <josh.ballard@grantstreet.com>
-- (1) Scott Lee <scott.lee@grantstreet.com>
-- Reviewers:
-- (5) Brandon Messineo <brandon.messineo@grantstreet.com> 
-- (4) Andrew Fresh <andrew.fresh@grantstreet.com> 
-- (2) Josh Ballard <josh.ballard@grantstreet.com> 
-- (1) Brendan Byrd <brendan.byrd@grantstreet.com> 
-- (1) Jonathan Rubin <jon.rubin@grantstreet.com> 
-- (1) Kirsten Taing <kirsten.taing@grantstreetgroup.com> 
-- (1) Mark Flickinger <mark.flickinger@grantstreet.com> 
-- (1) Mitch McCracken <mmccrack@grantstreet.com> 
-- (1) Paul Durden <paul.durden@grantstreet.com> 
-- Deployers:
-- (9) Andrew Fresh <andrew.fresh@grantstreet.com>  
-- (5) Jon Rubin <jrubin@grantstreet.com>  
-- (3) Andrew Hewus Fresh <andrew.fresh@grantstreet.com>  
-- (3) Jonathan Rubin <jon.rubin@grantstreet.com>  
-- (3) Randy Sofia <rsofia@grantstreet.com>  
-- (2) Brandon Messineo <brandon.messineo@grantstreet.com>  
-- (1) Kirsten Taing <kirsten.taing@grantstreetgroup.com>  
+    The Artistic License 2.0 (GPL Compatible)

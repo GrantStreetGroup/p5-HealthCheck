@@ -59,7 +59,7 @@ This module does not require that an instance is created to run checks against.
 If your code requires an instance, you will need to verify that yourself.
 
 Results returned by these checks should correspond to the GSG
-L<Health Check Standard|https://support.grantstreet.com/wiki/display/AC/Health+Check+Standard>.
+L<Health Check Standard|https://grantstreetgroup.github.io/HealthCheck.html>.
 
 Implementing a diagnostic should normally be done in L<run>
 to allow use of the helper features that L</check> provides.

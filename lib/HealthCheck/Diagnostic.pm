@@ -331,9 +331,15 @@ sub _summarize {
         }
     }
 
+    my %seen_ids;
     foreach my $i ( 0 .. $#results ) {
         my $r = $results[$i];
         $self->_summarize( $r, "$id-" . ( $r->{id} // $i ) );
+
+        # If this result has an ID we have seen already, append a number
+        if ( exists $r->{id} and my $i = $seen_ids{ $r->{id} // '' }++ ) {
+            $r->{id} .= defined $r->{id} && length $r->{id} ? "_$i" : $i;
+        }
 
         if ( defined( my $s = $r->{status} ) ) {
             $s = uc $s;

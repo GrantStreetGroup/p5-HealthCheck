@@ -133,15 +133,16 @@ use warnings 'once';
 {
     note "Attributes are copied into the result";
     @results = (
-        status => 'OK',
+        status  => 'OK',
 
-        foo => 1,
+        foo     => 1,
 
-        multi => { level => 1 },
+        multi   => { level => 1 },
 
-        undef => undef,
-        empty => '',
-        zero  => 0,
+        undef   => undef,
+        empty   => '',
+        zero    => 0,
+        runtime => '0.000',
     );
 
     my $diagnostic = My::HealthCheck::Diagnostic->new(
@@ -163,11 +164,12 @@ use warnings 'once';
 
     is_deeply(
         $diagnostic->check(
-            id     => 'ignored',
-            label  => 'ignored',
-            status => 'ignored',
-            tags   => [ 'bar', 'baz' ],    # not copied
-            foo    => 'ignored',
+            id      => 'ignored',
+            label   => 'ignored',
+            status  => 'ignored',
+            tags    => [ 'bar', 'baz' ],    # not copied
+            foo     => 'ignored',
+            runtime => 1,
         ),
         {   id    => "my_id",
             label => "My Label",

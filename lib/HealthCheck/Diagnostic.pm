@@ -8,6 +8,7 @@ use strict;
 use warnings;
 
 use Carp;
+use Time::HiRes qw< gettimeofday tv_interval >;
 
 # From the O'Reilly Regular Expressions Cookbook 2E, sorta
 # https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch04s07.html
@@ -49,6 +50,11 @@ You can then either instantiate an instance and run the check.
 Or as a class method.
 
     my $result = HealthCheck::Diagnostic::Sample->check();
+
+For runtime support, just add 'runtime' to the params for check and the
+time spent checking will be returned in the results.
+
+    my $result = HealthCheck::Diagnostic::Sample->check( runtime => 1 );
 
 =head1 DESCRIPTION
 
@@ -211,6 +217,7 @@ sub check {
         unless $class_or_self->can('run');
 
     local $@;
+    my $start = $params{runtime} ? [ gettimeofday ] : undef;
     my @res = eval { local $SIG{__DIE__}; $class_or_self->run(%params) };
     @res = { status => 'CRITICAL', info => "$@" } if $@;
 
@@ -221,6 +228,7 @@ sub check {
         @res = { status => 'UNKNOWN' };
     }
 
+    $res[0]->{runtime} = sprintf "%.03f", tv_interval($start) if $start;
     return $class_or_self->summarize(@res);
 }
 

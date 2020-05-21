@@ -54,11 +54,13 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
     );
 
     # It's possible to add ids, labels, and tags to your checks
-    # and they will be copied to the Result
+    # and they will be copied to the Result. There is also runtime support
+    # enabled by adding the runtime param to the checks.
     $other_checker->register( My::Checker->new(
-        id    => 'my_checker',
-        label => 'My Checker',
-        tags  => [qw( cheap copied_to_the_result )]
+        id      => 'my_checker',
+        label   => 'My Checker',
+        tags    => [qw( cheap copied_to_the_result )],
+        runtime => 1
     ) );
 
     # You can add HealthCheck instances as checks
@@ -165,7 +167,8 @@ There are several things this is trying to enable:
 =item *
 
 A fast HTTP endpoint that can be used to verify that a web app can
-serve traffic.
+serve traffic. To this end, it may be useful to use the runtime support option
+available in HealthChecks::Diagnostic.
 
 =item *
 A more complete check that verifies all the things work after a deployment.

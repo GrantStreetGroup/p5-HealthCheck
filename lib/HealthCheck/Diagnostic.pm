@@ -51,7 +51,7 @@ Or as a class method.
 
     my $result = HealthCheck::Diagnostic::Sample->check();
 
-For runtime support, just add 'runtime' to the params for check and the
+Set C<runtime> to a truthy value in the params for check and the
 time spent checking will be returned in the results.
 
     my $result = HealthCheck::Diagnostic::Sample->check( runtime => 1 );

@@ -188,8 +188,9 @@ There are several things this is trying to enable:
 =item *
 
 A fast HTTP endpoint that can be used to verify that a web app can
-serve traffic. To this end, it may be useful to use the runtime support option
-available in HealthChecks::Diagnostic.
+serve traffic.
+To this end, it may be useful to use the runtime support option,
+available in L<HealthChecks::Diagnostic>.
 
 =item *
 A more complete check that verifies all the things work after a deployment.

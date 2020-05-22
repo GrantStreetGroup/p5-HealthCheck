@@ -1,4 +1,11 @@
+requires 'strict';
+requires 'warnings';
+requires 'parent';
+requires 'Carp';
+
+requires 'Hash::Util::FieldHash';
 requires 'List::Util', '>= 1.43';
+requires 'Time::HiRes';
 
 on test => sub {
     requires 'Test::Strict';

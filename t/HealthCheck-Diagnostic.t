@@ -1,5 +1,5 @@
 use Test2::V0 -target => 'HealthCheck::Diagnostic',
-    qw< ok is note context done_testing >;
+    qw< ok is like note context done_testing >;
 
 my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
 
@@ -142,7 +142,6 @@ use warnings 'once';
         undef   => undef,
         empty   => '',
         zero    => 0,
-        runtime => '0.000',
     );
 
     my $diagnostic = My::HealthCheck::Diagnostic->new(
@@ -162,7 +161,7 @@ use warnings 'once';
     );
     $diagnostic->{qux} = ['u'];
 
-    is(
+    like(
         $diagnostic->check(
             id      => 'ignored',
             label   => 'ignored',
@@ -171,9 +170,10 @@ use warnings 'once';
             foo     => 'ignored',
             runtime => 1,
         ),
-        {   id    => "my_id",
-            label => "My Label",
-            tags  => [ 'foo', 'bar' ],
+        {   id      => "my_id",
+            label   => "My Label",
+            tags    => [ 'foo', 'bar' ],
+            runtime => qr{^\d+\.\d\d\d$},
 
             @results,
         },

@@ -8,6 +8,7 @@ requires 'List::Util', '>= 1.43';
 requires 'Time::HiRes';
 
 on test => sub {
+    requires 'Test2::V0';
     requires 'Test::Strict';
 };
 

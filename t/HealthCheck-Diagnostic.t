@@ -179,6 +179,49 @@ use warnings 'once';
         },
         "Copied only the expected attributes to the result"
     );
+    like(
+        $diagnostic->check(
+            id      => 'ignored',
+            label   => 'ignored',
+            status  => 'ignored',
+            runtime => [1],
+        ),
+        {   id      => "my_id",
+            label   => "My Label",
+            runtime => qr{^\d+\.\d\d\d$},
+
+            @results,
+        },
+        "Runtime works with array types"
+    );
+    like(
+        $diagnostic->check(
+            id      => 'ignored',
+            label   => 'ignored',
+            status  => 'ignored',
+            runtime => [0],
+        ),
+        {   id      => "my_id",
+            label   => "My Label",
+
+            @results,
+        },
+        "Runtime works with array types when argument is 0"
+    );
+    like(
+        $diagnostic->check(
+            id      => 'ignored',
+            label   => 'ignored',
+            status  => 'ignored',
+            runtime => 0,
+        ),
+        {   id      => "my_id",
+            label   => "My Label",
+
+            @results,
+        },
+        "Runtime param is ignored when argument is 0"
+    );
 
     # Don't copy these if they exist, even if undef
     push @results, ( id => undef, label => undef, tags => undef );

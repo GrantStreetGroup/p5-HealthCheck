@@ -218,10 +218,10 @@ sub check {
 
     local $@;
 
-    my $start = [ gettimeofday ]
-        unless ( ref($params{runtime}) ne 'ARRAY' ||
-                scalar( @{ $params{runtime} } ) != 1 ||
-                !$params{runtime}[0] );
+    my $is_zero = (ref($params{runtime}) ne 'ARRAY' && !$params{runtime})
+        || (ref($params{runtime}) eq 'ARRAY' && !$params{runtime}[0]);
+    my $size_not_1 = ref($params{runtime}) eq 'ARRAY' && scalar( @{ $params{runtime} } ) !=1;
+    my $start = [ gettimeofday ] unless $is_zero || $size_not_1;
 
     my @res = eval { local $SIG{__DIE__}; $class_or_self->run(%params) };
     @res = { status => 'CRITICAL', info => "$@" } if $@;

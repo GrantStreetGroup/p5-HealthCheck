@@ -217,7 +217,12 @@ sub check {
         unless $class_or_self->can('run');
 
     local $@;
-    my $start = $params{runtime} ? [ gettimeofday ] : undef;
+
+    my $start = [ gettimeofday ]
+        unless ( ref($params{runtime}) ne 'ARRAY' ||
+                scalar( @{ $params{runtime} } ) != 1 ||
+                !$params{runtime}[0] );
+
     my @res = eval { local $SIG{__DIE__}; $class_or_self->run(%params) };
     @res = { status => 'CRITICAL', info => "$@" } if $@;
 

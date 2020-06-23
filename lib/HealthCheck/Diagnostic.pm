@@ -217,14 +217,7 @@ sub check {
         unless $class_or_self->can('run');
 
     local $@;
-
-    # runtime should only be a single argument.
-    my $runtime = $params{runtime};
-    $runtime = $runtime->[0] if ref($params{runtime}) eq 'ARRAY';
-
-    my $start;
-    $start = [ gettimeofday ] if $runtime;
-
+    my $start = $params{runtime} ? [ gettimeofday ] : undef;
     my @res = eval { local $SIG{__DIE__}; $class_or_self->run(%params) };
     @res = { status => 'CRITICAL', info => "$@" } if $@;
 

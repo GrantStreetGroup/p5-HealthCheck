@@ -180,46 +180,6 @@ use warnings 'once';
         "Copied only the expected attributes to the result"
     );
 
-    # Test that runtime is enabled when passing in certain args.
-    my %runtime_args = (
-        q{1}       => 1,
-        q{[ 1 ]}   => [ 1 ],
-        q{'1'}     => '1',
-        q{[ '1' ]} => [ '1' ],
-    );
-    like (
-        $diagnostic->check(
-            id      => 'ignored',
-            label   => 'ignored',
-            status  => 'ignored',
-            runtime => $runtime_args{ $_ },
-        )->{runtime},
-        qr{^\d+\.\d{3}$},
-        "Runtime is enabled with $_ input arg."
-    ) foreach keys %runtime_args;
-
-    # Test that runtime is disabled when passing in certain args.
-    %runtime_args = (
-        q{undef}     => undef,
-        q{[ undef ]} => [ undef ],
-        q{''}        => '',
-        q{[ '' ]}    => [ '' ],
-        q{0}         => 0,
-        q{[ 0 ]}     => [ 0 ],
-        q{'0'}       => '0',
-        q{[ '0' ]}   => [ '0' ],
-    );
-    is (
-        $diagnostic->check(
-            id      => 'ignored',
-            label   => 'ignored',
-            status  => 'ignored',
-            runtime => $runtime_args{ $_ },
-        )->{runtime},
-        undef,
-        "Runtime is disabled with $_ input arg."
-    ) foreach keys %runtime_args;
-
     # Don't copy these if they exist, even if undef
     push @results, ( id => undef, label => undef, tags => undef );
 

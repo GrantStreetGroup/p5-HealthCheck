@@ -179,49 +179,46 @@ use warnings 'once';
         },
         "Copied only the expected attributes to the result"
     );
-    like(
+
+    # Test that runtime is enabled when passing in certain args.
+    my %runtime_args = (
+        q{1}       => 1,
+        q{[ 1 ]}   => [ 1 ],
+        q{'1'}     => '1',
+        q{[ '1' ]} => [ '1' ],
+    );
+    like (
         $diagnostic->check(
             id      => 'ignored',
             label   => 'ignored',
             status  => 'ignored',
-            runtime => [1],
-        ),
-        {   id      => "my_id",
-            label   => "My Label",
-            runtime => qr{^\d+\.\d\d\d$},
+            runtime => $runtime_args{ $_ },
+        )->{runtime},
+        qr{^\d+\.\d{3}$},
+        "Runtime is enabled with $_ input arg."
+    ) foreach keys %runtime_args;
 
-            @results,
-        },
-        "Runtime works with array types"
+    # Test that runtime is disabled when passing in certain args.
+    %runtime_args = (
+        q{undef}     => undef,
+        q{[ undef ]} => [ undef ],
+        q{''}        => '',
+        q{[ '' ]}    => [ '' ],
+        q{0}         => 0,
+        q{[ 0 ]}     => [ 0 ],
+        q{'0'}       => '0',
+        q{[ '0' ]}   => [ '0' ],
     );
-    like(
+    is (
         $diagnostic->check(
             id      => 'ignored',
             label   => 'ignored',
             status  => 'ignored',
-            runtime => [0],
-        ),
-        {   id      => "my_id",
-            label   => "My Label",
-
-            @results,
-        },
-        "Runtime works with array types when argument is 0"
-    );
-    like(
-        $diagnostic->check(
-            id      => 'ignored',
-            label   => 'ignored',
-            status  => 'ignored',
-            runtime => 0,
-        ),
-        {   id      => "my_id",
-            label   => "My Label",
-
-            @results,
-        },
-        "Runtime param is ignored when argument is 0"
-    );
+            runtime => $runtime_args{ $_ },
+        )->{runtime},
+        undef,
+        "Runtime is disabled with $_ input arg."
+    ) foreach keys %runtime_args;
 
     # Don't copy these if they exist, even if undef
     push @results, ( id => undef, label => undef, tags => undef );

@@ -54,11 +54,11 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
     );
 
     # It's possible to add ids, labels, and tags to your checks
-    # and they will be copied to the Result
+    # and they will be copied to the Result.
     $other_checker->register( My::Checker->new(
-        id    => 'my_checker',
-        label => 'My Checker',
-        tags  => [qw( cheap copied_to_the_result )]
+        id      => 'my_checker',
+        label   => 'My Checker',
+        tags    => [qw( cheap copied_to_the_result )],
     ) );
 
     # You can add HealthCheck instances as checks
@@ -144,12 +144,35 @@ C<%result> will be from the subset of checks run due to the tags.
                     tags   => [ "cheap", "easy" ],
                     status => "WARNING",
                 },
-                {   id     => "object_method",
+                {   id     => "object_method_1",
                     label  => "My Checker",
                     tags   => [ "cheap", "copied_to_the_result" ],
                     status => "WARNING",
                 }
             ],
+        }
+    ],
+
+There is also runtime support,
+which can be enabled by adding a truthy C<runtime> param to the C<check>.
+
+    $checker->check( tags => [ 'easy', '!fast' ], runtime => 1 );
+
+    id      => "my_health_check",
+    label   => "My Health Check",
+    runtime => "0.000",
+    tags    => [ "cheap", "easy" ],
+    status  => "WARNING",
+    results => [
+        {   id      => "class_method",
+            runtime => "0.000",
+            tags    => [ "cheap", "easy" ],
+            status  => "WARNING",
+        },
+        {   id      => "object_method",
+            runtime => "0.000",
+            tags    => [ "cheap", "easy" ],
+            status  => "WARNING",
         }
     ],
 
@@ -166,6 +189,8 @@ There are several things this is trying to enable:
 
 A fast HTTP endpoint that can be used to verify that a web app can
 serve traffic.
+To this end, it may be useful to use the runtime support option,
+available in L<HealthChecks::Diagnostic>.
 
 =item *
 A more complete check that verifies all the things work after a deployment.

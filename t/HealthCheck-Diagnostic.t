@@ -507,14 +507,13 @@ is( HealthCheck::Diagnostic->summarize( { results => [
         };
         my $at = "at " . __FILE__ . " line " . ( __LINE__ - 2 );
 
-        is( $got, $test->{expect}, "$name Summarized statuses" )
-            || diag explain $got ;
+        is( $got, $test->{expect}, "$name Summarized statuses" );
 
         is(
             \@warnings,
             [ map {"$_ $at$nl"} @{ $test->{warnings} || [] } ],
             "$name: Warned about incorrect status"
-        ) || diag explain \@warnings;
+        );
     }
 }
 
@@ -543,7 +542,7 @@ is( HealthCheck::Diagnostic->summarize( { results => [
         "fine-2 has invalid results ''",
         "fine-3 has invalid results 'a-string'",
         "fine-4 has invalid results 'HASH(0xHEX)'",
-    ], "Got warnings about invalid results") || diag explain \@warnings;
+    ], "Got warnings about invalid results");
 }
 
 { note "Complain about invalid ID";
@@ -585,7 +584,7 @@ is( HealthCheck::Diagnostic->summarize( { results => [
         "fine-not ok with spaces has invalid id 'not ok with spaces'",
         "fine-not/ok/with/slashes has invalid id 'not/ok/with/slashes'",
         q{fine-not_ok_"quoted" has invalid id 'not_ok_"quoted"'},
-    ], "Got warnings about invalid IDs" ) || diag explain \@warnings;
+    ], "Got warnings about invalid IDs" );
 }
 
 { note "Timestamp must be ISO8601";

@@ -2,7 +2,7 @@ package HealthCheck;
 use parent 'HealthCheck::Diagnostic';
 
 # ABSTRACT: A health check for your code
-# VERSION: 0.01
+# VERSION
 
 use 5.010;
 use strict;

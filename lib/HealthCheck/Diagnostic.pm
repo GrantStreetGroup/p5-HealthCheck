@@ -1,7 +1,7 @@
 package HealthCheck::Diagnostic;
 
 # ABSTRACT: A base clase for writing health check diagnositics
-# VERSION: 0.01
+# VERSION
 
 use 5.010;
 use strict;

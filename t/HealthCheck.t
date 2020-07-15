@@ -344,10 +344,23 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
         ],
     }, "Default check runs all checks";
 
+    {
+        local $c->{collapse_single_result} = 1;
+        is $c->check( tags => ['default'] ), {
+            'id'      => 'main',
+            'tags'    => ['default'],
+            'status'  => 'OK',
+        }, "Check with 'default' tags collapses as requested";
+    }
+
     is $c->check( tags => ['default'] ), {
         'id'     => 'main',
         'tags'   => ['default'],
         'status' => 'OK',
+        'results' => [ {
+            'status' => 'OK',
+            'tags'   => ['default'],
+        } ],
     }, "Check with 'default' tags runs only untagged check";
 
     is $c->check( tags => ['easy'] ), {
@@ -360,9 +373,14 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
                 'tags'   => [ 'fast', 'easy' ],
                 'status' => 'OK' },
             {
-                'id'     => 'subcheck_default',
+                'id'     => 'subcheck',
                 'tags'   => [ 'subcheck', 'easy' ],
                 'status' => 'OK',
+                'results' => [ {
+                    'id'     => 'subcheck_default',
+                    'tags'   => [ 'subcheck', 'easy' ],
+                    'status' => 'OK',
+                } ]
             }
         ],
     }, "Check with 'easy' tags runs checks tagged easy";

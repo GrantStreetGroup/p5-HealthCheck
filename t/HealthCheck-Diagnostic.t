@@ -238,7 +238,7 @@ use warnings 'once';
 }
 
 is(
-    HealthCheck::Diagnostic->summarize( {
+    HealthCheck::Diagnostic->new( collapse_single_result => 1 )->summarize( {
         results => [ { results => [ { results => [ {
             results => [ { status => 'OK' }, { status => 'OK' } ]
         } ] } ] } ]
@@ -246,38 +246,75 @@ is(
     {   status  => 'OK',
         results => [ { status => 'OK' }, { status => 'OK' } ],
     },
+    "Summarize looks at sub-results for a status when collapsing"
+);
+
+is(
+    HealthCheck::Diagnostic->summarize( {
+        results => [ { results => [ { results => [ {
+            results => [ { status => 'OK' }, { status => 'OK' } ]
+        } ] } ] } ]
+    } ),
+    {   status  => 'OK',
+        results => [
+            {   status  => 'OK',
+                results => [
+                    {   status  => 'OK',
+                        results => [
+                            {   status  => 'OK',
+                                results => [
+                                    { status => 'OK' }, { status => 'OK' }
+                                ],
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
     "Summarize looks at sub-results for a status"
 );
 
-is( HealthCheck::Diagnostic->summarize( { results => [
-    { status  => "OK" },
-    { status  => "OK", id => "foo" },
-    { status  => "OK" },
-    { status  => "OK", id => "bar" },
-    { status  => "OK" },
-    { status  => "OK", id => "foo" },
-    { status  => "OK", id => "bar" },
-    { results => [ { status => "OK", id => "foo" } ] },
-    { results => [
-        { status => "OK", id => "foo" },
-        { status => "OK", id => "foo" },
-        { status => "OK", id => "foo" }
-    ] },
-] } ), { status => "OK", results => [
-    { status  => "OK" },
-    { status  => "OK", id => "foo" },
-    { status  => "OK" },
-    { status  => "OK", id => "bar" },
-    { status  => "OK" },
-    { status  => "OK", id => "foo_1" },
-    { status  => "OK", id => "bar_1" },
-    { status  => "OK", id => "foo_2" },
-    { status => "OK", results => [
-        { status => "OK", id => "foo" },
-        { status => "OK", id => "foo_1" },
-        { status => "OK", id => "foo_2" },
-    ] },
-] }, "Summarize appends numbers to make valid ids" );
+is( HealthCheck::Diagnostic->new( collapse_single_result => 1 )->summarize(
+        {   results => [
+                { status  => "OK" },
+                { status  => "OK", id => "foo" },
+                { status  => "OK" },
+                { status  => "OK", id => "bar" },
+                { status  => "OK" },
+                { status  => "OK", id => "foo" },
+                { status  => "OK", id => "bar" },
+                { results => [ { status => "OK", id => "foo" } ] },
+                {   results => [
+                        { status => "OK", id => "foo" },
+                        { status => "OK", id => "foo" },
+                        { status => "OK", id => "foo" }
+                    ]
+                },
+            ]
+        }
+    ),
+    {   status  => "OK",
+        results => [
+            { status => "OK" },
+            { status => "OK", id => "foo" },
+            { status => "OK" },
+            { status => "OK", id => "bar" },
+            { status => "OK" },
+            { status => "OK", id => "foo_1" },
+            { status => "OK", id => "bar_1" },
+            { status => "OK", id => "foo_2" },
+            {   status  => "OK",
+                results => [
+                    { status => "OK", id => "foo" },
+                    { status => "OK", id => "foo_1" },
+                    { status => "OK", id => "foo_2" },
+                ]
+            },
+        ]
+    },
+    "Summarize appends numbers to make valid ids"
+);
 
 { note "Complain about invalid ID but still make unique";
     my @warnings;

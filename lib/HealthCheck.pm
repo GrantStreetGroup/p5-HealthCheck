@@ -497,6 +497,29 @@ sub _set_check_response_defaults {
     $c->{_respond} = \%defaults;
 }
 
+=head2 collapse_single_result
+
+Read only accessor for the L<HealthCheck::Diagnostic/collapse_single_result>.
+
+Adjusts the default to be truthy if only a single check is registered.
+
+=cut
+
+sub collapse_single_result {
+    my ($self) = @_;
+    return unless ref $self;
+
+    if ( exists $self->{collapse_single_result} ) {
+        return $self->{collapse_single_result};
+    }
+    elsif ( @{ $registered_checks{$self} || [] } == 1 ) {
+        return 1;
+    }
+
+    return;
+}
+
+
 =head1 INTERNALS
 
 These methods may be useful for subclassing,

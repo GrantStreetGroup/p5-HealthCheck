@@ -249,31 +249,40 @@ is(
     "Summarize looks at sub-results for a status when collapsing"
 );
 
-is(
-    HealthCheck::Diagnostic->summarize( {
-        results => [ { results => [ { results => [ {
-            results => [ { status => 'OK' }, { status => 'OK' } ]
-        } ] } ] } ]
-    } ),
-    {   status  => 'OK',
-        results => [
-            {   status  => 'OK',
-                results => [
-                    {   status  => 'OK',
-                        results => [
-                            {   status  => 'OK',
-                                results => [
-                                    { status => 'OK' }, { status => 'OK' }
-                                ],
-                            }
-                        ]
-                    }
-                ]
-            }
-        ]
-    },
-    "Summarize looks at sub-results for a status"
-);
+foreach (
+    [ class   => 'HealthCheck::Diagnostic' ],
+    [ default => HealthCheck::Diagnostic->new ],
+    [   explicit =>
+            HealthCheck::Diagnostic->new( collapse_single_result => 0 )
+    ],
+    )
+{
+    my ($type, $diagnostic) = @{ $_ };
+
+    is( $diagnostic->summarize( {
+            results => [ {
+                results => [ {
+                    results => [ {
+                        results => [ { status => 'OK' }, { status => 'OK' } ]
+                    } ]
+                } ]
+            } ]
+        } ),
+        {   status  => 'OK',
+            results => [ {
+                status  => 'OK',
+                results => [ {
+                    status  => 'OK',
+                    results => [ {
+                        status  => 'OK',
+                        results => [ { status => 'OK' }, { status => 'OK' } ],
+                    } ]
+                } ]
+            } ]
+        },
+        "[$type] Summarize looks at sub-results for a status"
+    );
+}
 
 is( HealthCheck::Diagnostic->new( collapse_single_result => 1 )->summarize(
         {   results => [

@@ -454,6 +454,8 @@ sub run {
         $self->should_run( $_, %params );
     } @{ $registered_checks{$self} || [] };
 
+    return unless @results; # don't return undef, instead an empty list
+    return $results[0] if @{ $registered_checks{$self} || [] } == 1;
     return { results => \@results };
 }
 
@@ -495,28 +497,6 @@ sub _set_check_response_defaults {
     $defaults{tags} = [ @{ $defaults{tags} } ] if $defaults{tags};
 
     $c->{_respond} = \%defaults;
-}
-
-=head2 collapse_single_result
-
-Read only accessor for the L<HealthCheck::Diagnostic/collapse_single_result>.
-
-Adjusts the default to be truthy if only a single check is registered.
-
-=cut
-
-sub collapse_single_result {
-    my ($self) = @_;
-    return unless ref $self;
-
-    if ( exists $self->{collapse_single_result} ) {
-        return $self->{collapse_single_result};
-    }
-    elsif ( @{ $registered_checks{$self} || [] } == 1 ) {
-        return 1;
-    }
-
-    return;
 }
 
 

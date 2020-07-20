@@ -389,15 +389,12 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
         # Because the "subcheck" doesn't have a "hard" tag
         # it doesn't get run, so none of its checks get run
         # so there are no results.
-        is $c->check( tags => ['hard'] ),
-            {
+        is $c->check( tags => ['hard'] ), {
             'id'      => 'main',
             'tags'    => ['default'],
             'status'  => 'UNKNOWN',
             'info'    => 'missing status',
-            'results' => [],
-            },
-            "Check with 'hard' tags runs no checks, so no results";
+        }, "Check with 'hard' tags runs no checks, so no results";
     }
 }
 

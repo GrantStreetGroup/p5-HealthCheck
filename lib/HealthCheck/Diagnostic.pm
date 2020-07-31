@@ -204,7 +204,8 @@ This thin wrapper
 makes sure C<%params> is an even-sided list (possibly unpacking a hashref)
 before passing it to L</run>,
 trapping any exceptions,
-and passing the return value through L</summarize>.
+and passing the return value through L</summarize> unless a falsy
+C<summarize_result> parameter is passed.
 
 This could be used to validate parameters or to modify the the return value
 in some way.
@@ -249,6 +250,11 @@ sub check {
     croak("$class does not implement a 'run' method")
         unless $class_or_self->can('run');
 
+    my $summarize
+        = exists $params{summarize_result}
+        ? $params{summarize_result}
+        : 1;
+
     local $@;
     my $start = $params{runtime} ? [ gettimeofday ] : undef;
     my @res = eval { local $SIG{__DIE__}; $class_or_self->run(%params) };
@@ -262,6 +268,8 @@ sub check {
     }
 
     $res[0]->{runtime} = sprintf "%.03f", tv_interval($start) if $start;
+
+    return $res[0] unless $summarize;
     return $class_or_self->summarize(@res);
 }
 

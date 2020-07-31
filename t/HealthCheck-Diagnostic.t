@@ -237,17 +237,23 @@ use warnings 'once';
         "Warned about undef id in result";
 }
 
-is(
-    HealthCheck::Diagnostic->new( collapse_single_result => 1 )->summarize( {
-        results => [ { results => [ { results => [ {
-            results => [ { status => 'OK' }, { status => 'OK' } ]
-        } ] } ] } ]
-    } ),
-    {   status  => 'OK',
-        results => [ { status => 'OK' }, { status => 'OK' } ],
-    },
-    "Summarize looks at sub-results for a status when collapsing"
-);
+{
+    my @warnings;
+    local $SIG{__WARN__} = sub { push @warnings, @_ };
+    my $at = "at " . __FILE__ . " line " . ( __LINE__ + 1 );
+    is( HealthCheck::Diagnostic->new( collapse_single_result => 1 )
+            ->summarize( {   results => [ { results => [ { results => [ {
+                results => [ { status => 'OK' }, { status => 'OK' } ]
+            } ] } ] } ]
+        } ),
+        {   status  => 'OK',
+            results => [ { status => 'OK' }, { status => 'OK' } ],
+        },
+        "Summarize looks at sub-results for a status when collapsing"
+    );
+
+    is( \@warnings, [], "No warnings generated" );
+}
 
 foreach (
     [ class   => 'HealthCheck::Diagnostic' ],
@@ -259,6 +265,9 @@ foreach (
 {
     my ($type, $diagnostic) = @{ $_ };
 
+    my @warnings;
+    local $SIG{__WARN__} = sub { push @warnings, @_ };
+    my $at = "at " . __FILE__ . " line " . ( __LINE__ + 1 );
     is( $diagnostic->summarize( {
             results => [ {
                 results => [ {
@@ -282,6 +291,8 @@ foreach (
         },
         "[$type] Summarize looks at sub-results for a status"
     );
+
+    is( \@warnings, [], "No warnings generated" );
 }
 
 is( HealthCheck::Diagnostic->new( collapse_single_result => 1 )->summarize(

@@ -383,7 +383,7 @@ sub register {
     my %results = %{ $checker->check(%params) }
 
 Calls all of the registered checks and returns a hashref of the results of
-processing the checks passed through L</summarize>.
+processing the checks passed through L<HealthCheck::Diagnostic/summarize>.
 Passes the L</full hashref of params> as an even-sized list to the check,
 without the C<invocant> or C<check> keys.
 This hashref is shallow merged with and duplicate keys overridden by
@@ -404,6 +404,10 @@ Throws an exception if no checks have been registered.
 
 Main implementation of the checker is here.
 
+Passes C<< summarize_result => 0 >> to each registered check
+unless overridden to avoid running C<summarize> multiple times.
+See L<HealthCheck::Diagnostic/check>.
+
 =cut
 
 sub check {
@@ -415,6 +419,9 @@ sub check {
 
 sub run {
     my ($self, %params) = @_;
+
+    # If we are going to summarize things, no need for our children to
+    $params{summarize_result} = 0 unless exists $params{summarize_result};
 
     my @results = map {
         my %c = %{$_};

@@ -2,7 +2,7 @@ package HealthCheck;
 use parent 'HealthCheck::Diagnostic';
 
 # ABSTRACT: A health check for your code
-# VERSION: 0.01
+# VERSION
 
 use 5.010;
 use strict;
@@ -454,6 +454,8 @@ sub run {
         $self->should_run( $_, %params );
     } @{ $registered_checks{$self} || [] };
 
+    return unless @results; # don't return undef, instead an empty list
+    return $results[0] if @{ $registered_checks{$self} || [] } == 1;
     return { results => \@results };
 }
 
@@ -496,6 +498,7 @@ sub _set_check_response_defaults {
 
     $c->{_respond} = \%defaults;
 }
+
 
 =head1 INTERNALS
 

@@ -238,7 +238,7 @@ use warnings 'once';
 }
 
 is(
-    HealthCheck::Diagnostic->summarize( {
+    HealthCheck::Diagnostic->new( collapse_single_result => 1 )->summarize( {
         results => [ { results => [ { results => [ {
             results => [ { status => 'OK' }, { status => 'OK' } ]
         } ] } ] } ]
@@ -246,38 +246,84 @@ is(
     {   status  => 'OK',
         results => [ { status => 'OK' }, { status => 'OK' } ],
     },
-    "Summarize looks at sub-results for a status"
+    "Summarize looks at sub-results for a status when collapsing"
 );
 
-is( HealthCheck::Diagnostic->summarize( { results => [
-    { status  => "OK" },
-    { status  => "OK", id => "foo" },
-    { status  => "OK" },
-    { status  => "OK", id => "bar" },
-    { status  => "OK" },
-    { status  => "OK", id => "foo" },
-    { status  => "OK", id => "bar" },
-    { results => [ { status => "OK", id => "foo" } ] },
-    { results => [
-        { status => "OK", id => "foo" },
-        { status => "OK", id => "foo" },
-        { status => "OK", id => "foo" }
-    ] },
-] } ), { status => "OK", results => [
-    { status  => "OK" },
-    { status  => "OK", id => "foo" },
-    { status  => "OK" },
-    { status  => "OK", id => "bar" },
-    { status  => "OK" },
-    { status  => "OK", id => "foo_1" },
-    { status  => "OK", id => "bar_1" },
-    { status  => "OK", id => "foo_2" },
-    { status => "OK", results => [
-        { status => "OK", id => "foo" },
-        { status => "OK", id => "foo_1" },
-        { status => "OK", id => "foo_2" },
-    ] },
-] }, "Summarize appends numbers to make valid ids" );
+foreach (
+    [ class   => 'HealthCheck::Diagnostic' ],
+    [ default => HealthCheck::Diagnostic->new ],
+    [   explicit =>
+            HealthCheck::Diagnostic->new( collapse_single_result => 0 )
+    ],
+    )
+{
+    my ($type, $diagnostic) = @{ $_ };
+
+    is( $diagnostic->summarize( {
+            results => [ {
+                results => [ {
+                    results => [ {
+                        results => [ { status => 'OK' }, { status => 'OK' } ]
+                    } ]
+                } ]
+            } ]
+        } ),
+        {   status  => 'OK',
+            results => [ {
+                status  => 'OK',
+                results => [ {
+                    status  => 'OK',
+                    results => [ {
+                        status  => 'OK',
+                        results => [ { status => 'OK' }, { status => 'OK' } ],
+                    } ]
+                } ]
+            } ]
+        },
+        "[$type] Summarize looks at sub-results for a status"
+    );
+}
+
+is( HealthCheck::Diagnostic->new( collapse_single_result => 1 )->summarize(
+        {   results => [
+                { status  => "OK" },
+                { status  => "OK", id => "foo" },
+                { status  => "OK" },
+                { status  => "OK", id => "bar" },
+                { status  => "OK" },
+                { status  => "OK", id => "foo" },
+                { status  => "OK", id => "bar" },
+                { results => [ { status => "OK", id => "foo" } ] },
+                {   results => [
+                        { status => "OK", id => "foo" },
+                        { status => "OK", id => "foo" },
+                        { status => "OK", id => "foo" }
+                    ]
+                },
+            ]
+        }
+    ),
+    {   status  => "OK",
+        results => [
+            { status => "OK" },
+            { status => "OK", id => "foo" },
+            { status => "OK" },
+            { status => "OK", id => "bar" },
+            { status => "OK" },
+            { status => "OK", id => "foo_1" },
+            { status => "OK", id => "bar_1" },
+            { status => "OK", id => "foo_2" },
+            {   status  => "OK",
+                results => [
+                    { status => "OK", id => "foo" },
+                    { status => "OK", id => "foo_1" },
+                    { status => "OK", id => "foo_2" },
+                ]
+            },
+        ]
+    },
+    "Summarize appends numbers to make valid ids"
+);
 
 { note "Complain about invalid ID but still make unique";
     my @warnings;
@@ -507,14 +553,13 @@ is( HealthCheck::Diagnostic->summarize( { results => [
         };
         my $at = "at " . __FILE__ . " line " . ( __LINE__ - 2 );
 
-        is( $got, $test->{expect}, "$name Summarized statuses" )
-            || diag explain $got ;
+        is( $got, $test->{expect}, "$name Summarized statuses" );
 
         is(
             \@warnings,
             [ map {"$_ $at$nl"} @{ $test->{warnings} || [] } ],
             "$name: Warned about incorrect status"
-        ) || diag explain \@warnings;
+        );
     }
 }
 
@@ -543,7 +588,7 @@ is( HealthCheck::Diagnostic->summarize( { results => [
         "fine-2 has invalid results ''",
         "fine-3 has invalid results 'a-string'",
         "fine-4 has invalid results 'HASH(0xHEX)'",
-    ], "Got warnings about invalid results") || diag explain \@warnings;
+    ], "Got warnings about invalid results");
 }
 
 { note "Complain about invalid ID";
@@ -585,7 +630,7 @@ is( HealthCheck::Diagnostic->summarize( { results => [
         "fine-not ok with spaces has invalid id 'not ok with spaces'",
         "fine-not/ok/with/slashes has invalid id 'not/ok/with/slashes'",
         q{fine-not_ok_"quoted" has invalid id 'not_ok_"quoted"'},
-    ], "Got warnings about invalid IDs" ) || diag explain \@warnings;
+    ], "Got warnings about invalid IDs" );
 }
 
 { note "Timestamp must be ISO8601";

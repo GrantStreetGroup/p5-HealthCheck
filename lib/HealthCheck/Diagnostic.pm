@@ -1,7 +1,7 @@
 package HealthCheck::Diagnostic;
 
 # ABSTRACT: A base clase for writing health check diagnositics
-# VERSION: 0.01
+# VERSION
 
 use 5.010;
 use strict;
@@ -101,6 +101,29 @@ by L</summarize>, without overriding anything already set in the result.
 
 =over
 
+=item collapse_single_result
+
+If truthy, will collapse a single sub-result into the current result,
+with the child result overwriting the values from the parent.
+
+For example:
+
+    {   id      => "my_id",
+        label   => "My Label",
+        results => [ {
+            label  => "Sub Label",
+            status => "OK",
+        } ]
+    }
+
+Collapses to:
+
+    {   id     => "my_id",
+        label  => "Sub Label",
+        status => "OK",
+    }
+
+
 =item tags
 
 An arrayref used as the default set of tags for any checks that don't
@@ -134,6 +157,16 @@ sub new {
         ? %{ $params[0] } : @params;
 
     bless \%params, $class;
+}
+
+=head2 collapse_single_result
+
+Read only accessor for the C</collapse_single_result> attribute.
+
+=cut
+
+sub collapse_single_result {
+    return unless ref $_[0]; return shift->{collapse_single_result};
 }
 
 =head2 tags
@@ -322,7 +355,7 @@ sub _summarize {
             @results = @{ $result->{results} };
 
             # Merge if there is only a single result.
-            if ( @results == 1 ) {
+            if ( @results == 1 and $self->collapse_single_result ) {
                 my ($r) = @{ delete $result->{results} };
                 %{$result} = ( %{$result}, %{$r} );
 

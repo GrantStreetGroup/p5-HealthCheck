@@ -167,7 +167,7 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
             check => sub { @args = @_; status => 'OK' },
             label => "CodeRef Label",
         );
-        HealthCheck->new->register( \%check )->check;
+        HealthCheck->new->register( {%check} )->check;
 
         delete @check{qw( invocant check )};
 
@@ -184,7 +184,7 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
             check    => sub { @args = @_; status => 'OK' },
             label    => "Method Label",
         );
-        HealthCheck->new->register( \%check )->check;
+        HealthCheck->new->register( {%check} )->check;
 
         delete @check{qw( invocant check )};
         is(
@@ -199,7 +199,7 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
             check => sub { @args = @_; status => 'OK' },
             label => "CodeRef Label",
         );
-        HealthCheck->new->register( \%check )->check( custom => 'params' );
+        HealthCheck->new->register( {%check} )->check( custom => 'params' );
 
         delete @check{qw( invocant check )};
 
@@ -215,7 +215,7 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
             check => sub { @args = @_; status => 'OK' },
             label => "CodeRef Label",
         );
-        HealthCheck->new->register( \%check )->check( label => 'Check' );
+        HealthCheck->new->register( {%check} )->check( label => 'Check' );
 
         delete @check{qw( invocant check )};
 

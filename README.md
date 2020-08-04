@@ -4,7 +4,7 @@ HealthCheck - A health check for your code
 
 # VERSION
 
-version v1.5.5
+version v1.6.0
 
 # SYNOPSIS
 
@@ -268,7 +268,7 @@ several common cases are detected and used to fill out the check.
     my %results = %{ $checker->check(%params) }
 
 Calls all of the registered checks and returns a hashref of the results of
-processing the checks passed through ["summarize"](#summarize).
+processing the checks passed through ["summarize" in HealthCheck::Diagnostic](https://metacpan.org/pod/HealthCheck%3A%3ADiagnostic#summarize).
 Passes the ["full hashref of params"](#full-hashref-of-params) as an even-sized list to the check,
 without the `invocant` or `check` keys.
 This hashref is shallow merged with and duplicate keys overridden by
@@ -288,6 +288,10 @@ Throws an exception if no checks have been registered.
 ### run
 
 Main implementation of the checker is here.
+
+Passes `summarize_result => 0` to each registered check
+unless overridden to avoid running `summarize` multiple times.
+See ["check" in HealthCheck::Diagnostic](https://metacpan.org/pod/HealthCheck%3A%3ADiagnostic#check).
 
 # INTERNALS
 

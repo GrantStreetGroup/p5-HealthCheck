@@ -167,15 +167,12 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
             check => sub { @args = @_; status => 'OK' },
             label => "CodeRef Label",
         );
-        HealthCheck->new->register( \%check )->check;
+        HealthCheck->new->register( {%check} )->check;
 
         delete @check{qw( invocant check )};
+        $check{summarize_result} = 0;
 
-        is(
-            \@args,
-            [ %check ],
-            "Without an invocant, called as a function"
-        );
+        is( {@args}, {%check}, "Without an invocant, called as a function" );
     }
     {
         my @args;
@@ -184,12 +181,13 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
             check    => sub { @args = @_; status => 'OK' },
             label    => "Method Label",
         );
-        HealthCheck->new->register( \%check )->check;
+        HealthCheck->new->register( {%check} )->check;
 
         delete @check{qw( invocant check )};
-        is(
-            \@args,
-            [ 'My::Check', %check ],
+        $check{summarize_result} = 0;
+
+        is( [ $args[0],    { @args[ 1 .. $#args ] } ],
+            [ 'My::Check', {%check} ],
             "With an invocant, called as a method"
         );
     }
@@ -199,13 +197,13 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
             check => sub { @args = @_; status => 'OK' },
             label => "CodeRef Label",
         );
-        HealthCheck->new->register( \%check )->check( custom => 'params' );
+        HealthCheck->new->register( {%check} )->check( custom => 'params' );
 
         delete @check{qw( invocant check )};
+        $check{summarize_result} = 0;
 
-        is(
-            \@args,
-            [ %check, custom => 'params' ],
+        is( {@args},
+            { %check, custom => 'params' },
             "Params passed to check merge with check definition"
         );
     }
@@ -215,14 +213,42 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
             check => sub { @args = @_; status => 'OK' },
             label => "CodeRef Label",
         );
-        HealthCheck->new->register( \%check )->check( label => 'Check' );
+        HealthCheck->new->register( {%check} )->check( label => 'Check' );
 
         delete @check{qw( invocant check )};
+        $check{summarize_result} = 0;
 
-        is(
-            \@args,
-            [ %check, label => 'Check' ],
+        is( {@args},
+            { %check, label => 'Check' },
             "Params passed to check override check definition"
+        );
+    }
+    {
+        my @args;
+        my %check = ( check => sub { @args = @_; status => 'OK' } );
+        HealthCheck->new->register( {%check} )
+            ->check( summarize_result => '' );
+
+        delete @check{qw( invocant check )};
+        $check{summarize_result} = 0;
+
+        is( {@args},
+            { %check, summarize_result => '' },
+            "Overriding summarize_result with falsy value works"
+        );
+    }
+    {
+        my @args;
+        my %check = ( check => sub { @args = @_; status => 'OK' } );
+        HealthCheck->new->register( {%check} )
+            ->check( summarize_result => 2 );
+
+        delete @check{qw( invocant check )};
+        $check{summarize_result} = 0;
+
+        is( {@args},
+            { %check, summarize_result => 2 },
+            "Overriding summarize_result with truthy value works"
         );
     }
 }

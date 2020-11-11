@@ -4,7 +4,7 @@ HealthCheck - A health check for your code
 
 # VERSION
 
-version v1.6.0
+version v1.7.0
 
 # SYNOPSIS
 

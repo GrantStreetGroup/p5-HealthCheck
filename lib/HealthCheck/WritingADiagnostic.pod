@@ -151,7 +151,6 @@ This anonymous function requires proper exception handling.
     if( ref $params{api} eq 'CODE' ) {
         local $@;
         $params{api} = eval {
-            local $SIG{__DIE__};
             $params{api}->();
         };
         return {

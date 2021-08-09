@@ -252,7 +252,7 @@ sub check {
 
     local $@;
     my $start = $params{runtime} ? [ gettimeofday ] : undef;
-    my @res = eval { local $SIG{__DIE__}; $class_or_self->run(%params) };
+    my @res = eval { $class_or_self->run(%params) };
     @res = { status => 'CRITICAL', info => "$@" } if $@;
 
     if ( @res == 1 && ( ref $res[0] || '' ) eq 'HASH' ) { }    # noop, OK

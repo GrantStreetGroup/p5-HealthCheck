@@ -348,7 +348,7 @@ sub register {
             # runner does the right thing.
             if ( $c{check} and not $c{invocant} and do {
                     local $@;
-                    eval { local $SIG{__DIE__}; $c{check}->can('check') };
+                    eval { $c{check}->can('check') };
                 } )
             {
                 $c{invocant} = $c{check};
@@ -440,8 +440,7 @@ sub run {
         # (for fear of exception-catching magic and rabbitholes).
         {
             local $@;
-            @r = eval { local $SIG{__DIE__};
-                $i ? $i->$m( %c, %params ) : $m->( %c, %params ) };
+            @r = eval { $i ? $i->$m( %c, %params ) : $m->( %c, %params ) };
             @r = { status => 'CRITICAL', info => $@ } if $@ and not @r;
         }
 

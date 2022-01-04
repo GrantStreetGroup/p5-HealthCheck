@@ -105,6 +105,7 @@ For example:
 
     {   id      => "my_id",
         label   => "My Label",
+        runbook => "https://grantstreetgroup.github.io/HealthCheck.html",
         results => [ {
             label  => "Sub Label",
             status => "OK",
@@ -113,9 +114,10 @@ For example:
 
 Collapses to:
 
-    {   id     => "my_id",
-        label  => "Sub Label",
-        status => "OK",
+    {   id      => "my_id",
+        label   => "Sub Label",
+        runbook => "https://grantstreetgroup.github.io/HealthCheck.html",
+        status  => "OK",
     }
 
 
@@ -139,6 +141,10 @@ The unique id for this check.
 =item label
 
 A human readable name for this check.
+
+=item runbook
+
+A runbook link to help troubleshooting if the status is not OK.
 
 =back
 
@@ -187,6 +193,14 @@ Read only accessor that returns the label registered with this object.
 =cut
 
 sub label { return unless ref $_[0]; return shift->{label} }
+
+=head2 runbook
+
+Read only accessor that returns the runbook registered with this object.
+
+=cut
+
+sub runbook { return unless ref $_[0]; return shift->{runbook} }
 
 =head2 check
 
@@ -275,7 +289,7 @@ sub check {
 Validates, pre-formats, and returns the C<result> so that it is easily
 usable by HealthCheck.
 
-The attributes C<id>, C<label>, and C<tags>
+The attributes C<id>, C<label>, C<runbook>, and C<tags>
 get copied from the C<$diagnostic> into the C<result>
 if they exist in the former and not in the latter.
 
@@ -321,7 +335,7 @@ Modifies the passed in hashref in-place.
 sub summarize {
     my ( $self, $result ) = @_;
 
-    $self->_set_default_fields($result, qw(id label tags));
+    $self->_set_default_fields($result, qw(id label runbook tags));
 
     return $self->_summarize( $result, $result->{id} // 0 );
 }

@@ -34,20 +34,22 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
     }
 
     my $checker = HealthCheck->new(
-        id     => 'main_checker',
-        label  => 'Main Health Check',
-        tags   => [qw( fast cheap )],
-        checks => [
+        id      => 'main_checker',
+        label   => 'Main Health Check',
+        runbook => 'https://grantstreetgroup.github.io/HealthCheck.html',
+        tags    => [qw( fast cheap )],
+        checks  => [
             sub { return { id => 'coderef', status => 'OK' } },
             'my_check',          # Name of a method on caller
         ],
     );
 
     my $other_checker = HealthCheck->new(
-        id     => 'my_health_check',
-        label  => "My Health Check",
-        tags   => [qw( cheap easy )],
-        other  => "Other details to pass to the check call",
+        id      => 'my_health_check',
+        label   => "My Health Check",
+        runbook => 'https://grantstreetgroup.github.io/HealthCheck.html',
+        tags    => [qw( cheap easy )],
+        other   => "Other details to pass to the check call",
     )->register(
         'My::Checker',       # Name of a loaded class that ->can("check")
         My::Checker->new,    # Object that ->can("check")
@@ -58,6 +60,7 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
     $other_checker->register( My::Checker->new(
         id      => 'my_checker',
         label   => 'My Checker',
+        runbook => 'https://grantstreetgroup.github.io/HealthCheck.html',
         tags    => [qw( cheap copied_to_the_result )],
     ) );
 
@@ -71,6 +74,7 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
     $checker->register( {
         invocant    => 'My::Checker',      # to call the "check" on
         check       => 'another_check',    # name of the check method
+        runbook     => 'https://grantstreetgroup.github.io/HealthCheck.html',
         tags        => [qw( fast easy )],
         more_params => 'anything',
     } );
@@ -107,9 +111,10 @@ Hash::Util::FieldHash::fieldhash my %registered_checks;
     sub another_check {
         my ($self, %params) = @_;
         return {
-            id     => 'another_check',
-            label  => 'A Super custom check',
-            status => ( $params{more_params} eq 'fine' ? "OK" : "CRITICAL" ),
+            id      => 'another_check',
+            label   => 'A Super custom check',
+            runbook => 'https://grantstreetgroup.github.io/HealthCheck.html',
+            status  => ( $params{more_params} eq 'fine' ? "OK" : "CRITICAL" ),
         };
     }
 
@@ -119,6 +124,7 @@ C<%result> will be from the subset of checks run due to the tags.
 
     id      => "main_checker",
     label   => "Main Health Check",
+    runbook => 'https://grantstreetgroup.github.io/HealthCheck.html',
     tags    => [ "fast", "cheap" ],
     status  => "WARNING",
     results => [
@@ -161,6 +167,7 @@ which can be enabled by adding a truthy C<runtime> param to the C<check>.
     id      => "my_health_check",
     label   => "My Health Check",
     runtime => "0.000",
+    runbook => 'https://grantstreetgroup.github.io/HealthCheck.html',
     tags    => [ "cheap", "easy" ],
     status  => "WARNING",
     results => [
@@ -246,6 +253,10 @@ The unique id for this check.
 =item label
 
 A human readable name for this check.
+
+=item runbook
+
+A runbook link to help troubleshooting if the status is not OK.
 
 =back
 
@@ -470,7 +481,7 @@ sub _set_check_response_defaults {
     return if exists $c->{_respond};
 
     my %defaults;
-    FIELD: for my $field ( qw(id label tags) ) {
+    FIELD: for my $field ( qw(id label runbook tags) ) {
         if (exists $c->{$field}) {
             $defaults{$field} = $c->{$field};
             next FIELD;

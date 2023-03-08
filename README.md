@@ -4,7 +4,7 @@ HealthCheck - A health check for your code
 
 # VERSION
 
-version v1.8.0
+version v1.8.1
 
 # SYNOPSIS
 
@@ -354,7 +354,7 @@ Grant Street Group <developers@grantstreet.com>
 
 # COPYRIGHT AND LICENSE
 
-This software is Copyright (c) 2017 - 2022 by Grant Street Group.
+This software is Copyright (c) 2017 - 2023 by Grant Street Group.
 
 This is free software, licensed under:
 

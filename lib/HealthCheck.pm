@@ -11,7 +11,7 @@ use warnings;
 use Carp;
 
 use Hash::Util::FieldHash;
-use List::Util qw(any);
+use List::Util qw(any uniq);
 
 # Create a place outside of $self to store the checks
 # as everything in the self hashref will be copied into
@@ -426,6 +426,37 @@ sub check {
     croak("check cannot be called as a class method") unless ref $self;
     croak("No registered checks") unless @{ $registered_checks{$self} || [] };
     $self->SUPER::check(@params);
+}
+
+=head2 get_registered_checks
+
+Read-only accessor that returns the list of checks registered with this object.
+
+=cut
+
+sub get_registered_checks {
+    my ($self) = @_;
+    croak("get_registered_checks cannot be called as a class method") unless ref $self;
+    return @{ $registered_checks{$self} || [] };
+}
+
+=head2 get_registered_tags
+
+Read-only accessor that returns the list of tags registered with this object.
+
+=cut
+
+sub get_registered_tags {
+    my ($self) = @_;
+
+    my @tags =  map {
+        $_->{invocant}
+            ? ( $_->{invocant}->tags, @{ $_->{tags} // [] } )
+            : @{ $_->{tags} // [] }
+    } $self->get_registered_checks;
+    push @tags, @{$self->{tags} // ()};
+
+    return sort {$a cmp $b} uniq @tags;
 }
 
 sub run {

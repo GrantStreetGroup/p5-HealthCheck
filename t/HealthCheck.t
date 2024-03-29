@@ -336,6 +336,10 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
             ),
         ] );
 
+    is( [$c->get_registered_tags()],
+        [qw( cheap default easy fast subcheck )],
+        'got expected registered tags');
+
     is $c->check, {
         'id'      => 'main',
         'status'  => 'CRITICAL',
@@ -512,6 +516,10 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
         ],
     );
 
+    is( [$c->get_registered_tags()],
+        [qw( check from invocant main with )],
+        'got expected registered tags' );
+
     is $c->check, {
         'id'      => 'main',
         'label'   => 'Main',
@@ -579,6 +587,47 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
         },
         "Able to report mixed success/failures"
     ;
+}
+
+{ note "Introspect registered checks";
+    my @checks = (
+        sub { +{ status => 'OK' } },
+        {
+            check => sub { +{ id => 'fast_cheap', status => 'OK' } },
+            runbook => 'https://runbook1.grantstreet.com',
+            tags => [qw( fast cheap )],
+        },
+        {
+            check => sub { +{ id => 'fast_easy', status => 'OK' } },
+            runbook => 'https://runbook2.grantstreet.com',
+            tags => [qw( fast easy )],
+        },
+        HealthCheck->new(
+            id      => 'subcheck',
+            runbook => 'https://runbook3.grantstreet.com',
+            tags    => [qw( subcheck easy )],
+            checks  => [
+                sub { +{ id => 'subcheck_default', status => 'OK' } },
+                {
+                    check => sub { +{ status => 'CRITICAL' } },
+                    tags  => ['hard'],
+                },
+            ]
+        ),
+    );
+    my $c = HealthCheck->new(
+        id      => 'main',
+        runbook => 'https://runbook-main.grantstreet.com',
+        tags    => ['default'],
+        checks  => \@checks );
+
+    is( [$c->get_registered_checks()],
+        [map {
+            if   (ref eq 'CODE') { { check => $_}; }
+            elsif(ref eq 'HASH') { $_; }
+            else { { check => 'check', invocant => $_ }; }
+        } @checks],
+        'got expected registered checks' );
 }
 
 done_testing;

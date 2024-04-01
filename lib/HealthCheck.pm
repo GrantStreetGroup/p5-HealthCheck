@@ -451,7 +451,9 @@ sub get_registered_tags {
 
     my @tags =  map {
         $_->{invocant}
-            ? ( $_->{invocant}->tags, @{ $_->{tags} // [] } )
+            ? $_->{invocant}->can('tags')
+                ? ($_->{invocant}->tags, @{ $_->{tags} // [] })
+                : @{ $_->{tags} // [] }
             : @{ $_->{tags} // [] }
     } $self->get_registered_checks;
     push @tags, @{$self->{tags} // ()};

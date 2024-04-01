@@ -440,13 +440,11 @@ sub get_registered_tags {
     my ($self) = @_;
 
     my @checks = @{ $registered_checks{$self} || [] };
-    my @tags   =  map {
-        $_->{tags}
-            ? @{ $_->{tags} }
-            : $_->{invocant} && $_->{invocant}->can('tags')
-                ? $_->{invocant}->tags
-                : ()
-    } @checks;
+    my @tags;
+    for my $check (@checks) {
+        $self->_set_check_response_defaults($check);
+        push @tags, @{ $check->{_respond}{tags} || [] };
+    }
     push @tags, @{$self->{tags} // ()};
 
     return sort {$a cmp $b} uniq @tags;

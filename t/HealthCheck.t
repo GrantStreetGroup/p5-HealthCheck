@@ -346,7 +346,7 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
         ] );
 
     is( [$c->get_registered_tags()],
-        [qw( cheap default easy fast from invocant subcheck with )],
+        [qw( cheap default easy fast invocant subcheck with )],
         'got expected registered tags');
 
     is $c->check, {

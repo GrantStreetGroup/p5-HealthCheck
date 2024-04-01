@@ -428,34 +428,25 @@ sub check {
     $self->SUPER::check(@params);
 }
 
-=head2 get_registered_checks
-
-Read-only accessor that returns the list of checks registered with this object.
-
-=cut
-
-sub get_registered_checks {
-    my ($self) = @_;
-    croak("get_registered_checks cannot be called as a class method") unless ref $self;
-    return @{ $registered_checks{$self} || [] };
-}
-
 =head2 get_registered_tags
 
-Read-only accessor that returns the list of tags registered with this object.
+Read-only accessor that returns the list of 'top-level' tags registered with
+this object. Sub-check tags are not included - only those which will result in
+checks being run when passed to L</check> on the given object.
 
 =cut
 
 sub get_registered_tags {
     my ($self) = @_;
 
-    my @tags =  map {
+    my @checks = @{ $registered_checks{$self} || [] };
+    my @tags   =  map {
         $_->{invocant}
             ? $_->{invocant}->can('tags')
                 ? ($_->{invocant}->tags, @{ $_->{tags} // [] })
                 : @{ $_->{tags} // [] }
             : @{ $_->{tags} // [] }
-    } $self->get_registered_checks;
+    } @checks;
     push @tags, @{$self->{tags} // ()};
 
     return sort {$a cmp $b} uniq @tags;

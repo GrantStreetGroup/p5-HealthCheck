@@ -4,7 +4,7 @@ HealthCheck - A health check for your code
 
 # VERSION
 
-version v1.8.2
+version v1.9.0
 
 # SYNOPSIS
 
@@ -304,6 +304,12 @@ Passes `summarize_result => 0` to each registered check
 unless overridden to avoid running `summarize` multiple times.
 See ["check" in HealthCheck::Diagnostic](https://metacpan.org/pod/HealthCheck%3A%3ADiagnostic#check).
 
+## get\_registered\_tags
+
+Read-only accessor that returns the list of 'top-level' tags registered with
+this object. Sub-check tags are not included - only those which will result in
+checks being run when passed to ["check"](#check) on the given object.
+
 # INTERNALS
 
 These methods may be useful for subclassing,
@@ -354,7 +360,7 @@ Grant Street Group <developers@grantstreet.com>
 
 # COPYRIGHT AND LICENSE
 
-This software is Copyright (c) 2017 - 2023 by Grant Street Group.
+This software is Copyright (c) 2017 - 2024 by Grant Street Group.
 
 This is free software, licensed under:
 

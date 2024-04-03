@@ -445,7 +445,7 @@ sub get_registered_tags {
         $self->_set_check_response_defaults($check);
         push @tags, @{ $check->{_respond}{tags} || [] };
     }
-    push @tags, @{$self->{tags} // ()};
+    push @tags, @{ $self->{tags} // [] };
 
     return sort {$a cmp $b} uniq @tags;
 }

@@ -626,6 +626,8 @@ my $nl = Carp->VERSION >= 1.25 ? ".\n" : "\n";
         },
         "Able to report mixed success/failures"
     ;
+
+    is [ $hc->get_registered_tags ], [], 'got expected (lack of) registered tags';
 }
 
 done_testing;

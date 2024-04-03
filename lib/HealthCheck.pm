@@ -447,7 +447,7 @@ sub get_registered_tags {
     }
     push @tags, @{ $self->{tags} // [] };
 
-    return sort {$a cmp $b} uniq @tags;
+    return uniq sort @tags;
 }
 
 sub run {

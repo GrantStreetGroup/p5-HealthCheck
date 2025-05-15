@@ -343,9 +343,13 @@ sub summarize {
 sub _set_default_fields {
     my ($self, $target, @fields) = @_;
     if ( ref $self ) {
-        $target->{$_} = $self->{$_}
-            for grep { not exists $target->{$_} }
-            grep     { exists $self->{$_} } @fields;
+        $target->{$_} = ($_ eq 'tags' ? [ $self->$_ ] : $self->$_) for (
+            grep {
+                !exists($target->{$_}) &&
+                ($_ eq 'tags' ? scalar($self->$_) : defined($self->$_))
+            }
+            @fields
+        );
     }
 }
 

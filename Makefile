@@ -67,7 +67,7 @@ ifneq (,$(wildcard $(DZIL)))
 EXTRA_UPDATES += Makefile.PL
 # Make sure this version is sync'd in t/*
 Makefile.PL: $(MAIN_MODULE) dist.ini $(DZIL) $(wildcard *.xs)
-	V=0.0.1 $(CARTON) exec dzil run sh -c "cp Makefile.PL ${CURDIR}/$@"
+	V=0.0.1 $(CARTON) exec dzil run -- sh -c "cp Makefile.PL ${CURDIR}/$@"
 endif
 
 Makefile: Makefile.PL
@@ -103,10 +103,10 @@ update: README.md LICENSE.txt $(EXTRA_UPDATES)
 	@echo Everything is up to date
 
 README.md: $(MAIN_MODULE) dist.ini $(DZIL)
-	$(CARTON) exec dzil run sh -c "pod2markdown $< > ${CURDIR}/$@"
+	$(CARTON) exec dzil run -- sh -c "pod2markdown $< > ${CURDIR}/$@"
 
 LICENSE.txt: dist.ini $(DZIL)
-	$(CARTON) exec dzil run sh -c "install -m 644 LICENSE ${CURDIR}/$@"
+	$(CARTON) exec dzil run -- sh -c "install -m 644 LICENSE ${CURDIR}/$@"
 
 .SECONDEXPANSION:
 $(CONTRIB): $(SHARE_DIR)/$$(@F)
